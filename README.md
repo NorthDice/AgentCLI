@@ -23,7 +23,23 @@ AgentCLI is a tool that processes natural language queries and converts them int
 pip install -e .
 ```
 
+## Configuration
+
+AgentCLI integrates with Azure OpenAI services. Create a `.env` file in your project root with the following variables:
+
+### Azure OpenAI API Configuration
+```
+AZURE_OPENAI_API_KEY=your_api_key
+AZURE_OPENAI_ENDPOINT=your_endpoint
+AZURE_OPENAI_DEPLOYMENT=your_deployment_name
+AZURE_OPENAI_API_VERSION=2023-05-15
+AZURE_OPENAI_MODEL_NAME=gpt-4
+```
+
 ## Usage
+
+# Using Azure OpenAI
+AgentCLI now uses Azure OpenAI API for LLM capabilities.
 
 ### Creating a Plan
 ```bash
@@ -58,4 +74,14 @@ agentcli gen "Function to calculate Fibonacci numbers" -o fib.py
 ### Viewing Status
 ```bash
 agentcli status
+```
+
+### Checking LLM Configuration
+```bash
+agentcli llm-config
+```
+
+### Testing LLM Connection
+```bash
+agentcli llm-config --test
 ```

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
-from agentcli.core.llm_service import MockLLMService
+from agentcli.core.azure_llm import create_llm_service
 from agentcli.core.exceptions import PlanError, ValidationError, LLMServiceError
 from agentcli.utils.logging import logger
 
@@ -18,9 +18,9 @@ class Planner:
         """Инициализация планировщика.
         
         Args:
-            llm_service: Сервис для работы с LLM. По умолчанию используется MockLLMService.
+            llm_service: Сервис для работы с LLM. По умолчанию используется Azure OpenAI сервис.
         """
-        self.llm_service = llm_service or MockLLMService()
+        self.llm_service = llm_service or create_llm_service()
         self.plans_dir = os.path.join(os.getcwd(), "plans")
         os.makedirs(self.plans_dir, exist_ok=True)
     

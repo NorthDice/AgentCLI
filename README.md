@@ -39,7 +39,12 @@ AZURE_OPENAI_MODEL_NAME=gpt-4
 ## Usage
 
 # Using Azure OpenAI
-AgentCLI now uses Azure OpenAI API for LLM capabilities.
+AgentCLI now uses Azure OpenAI API for LLM capabilities. Follow these steps to set up:
+
+1. Create an Azure OpenAI resource in Azure Portal
+2. Deploy a model (e.g., GPT-4) and note the deployment name
+3. Get your API key and endpoint from Azure Portal
+4. Update your `.env` file with these credentials
 
 ### Creating a Plan
 ```bash

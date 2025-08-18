@@ -18,8 +18,7 @@ from agentcli.cli.commands.llm_config import llm_config
 @click.version_option(version=__version__)
 @click.option('--debug', is_flag=True, help='Включить режим отладки')
 @click.option('--log-file', help='Путь к файлу логов')
-@click.option('--llm', type=click.Choice(['openai', 'azure']), help='Сервис LLM для использования')
-def cli(debug, log_file, llm):
+def cli(debug, log_file):
     """AgentCLI - инструмент разработчика для автономной работы с кодом на Python."""
     # Загружаем конфигурацию из .env файла
     load_dotenv()
@@ -33,10 +32,6 @@ def cli(debug, log_file, llm):
     
     # Устанавливаем уровень логирования через переменную окружения
     os.environ["AGENTCLI_LOG_LEVEL"] = log_level
-    
-    # Если указан LLM сервис, перезаписываем переменную окружения
-    if llm:
-        os.environ["LLM_SERVICE"] = llm
     
     # Перенастраиваем логгер
     setup_logging(log_level=log_level, 

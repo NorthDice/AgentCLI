@@ -4,8 +4,11 @@ import json
 import os
 import uuid
 from datetime import datetime
+from typing import Dict, List, Any, Optional
 
 from agentcli.core.llm_service import MockLLMService
+from agentcli.core.exceptions import PlanError, ValidationError, LLMServiceError
+from agentcli.utils.logging import logger
 
 
 class Planner:
@@ -21,7 +24,7 @@ class Planner:
         self.plans_dir = os.path.join(os.getcwd(), "plans")
         os.makedirs(self.plans_dir, exist_ok=True)
     
-    def create_plan(self, query):
+    def create_plan(self, query: str) -> Dict[str, Any]:
         """Создает план действий на основе запроса.
         
         Args:
@@ -29,21 +32,45 @@ class Planner:
             
         Returns:
             dict: План действий в формате словаря.
+            
+        Raises:
+            PlanError: При ошибке создания плана.
+            ValidationError: При ошибке валидации плана.
+            LLMServiceError: При ошибке взаимодействия с LLM сервисом.
         """
-        # Получаем план от LLM сервиса
-        actions = self.llm_service.generate_actions(query)
+        if not query or not query.strip():
+            error_msg = "Пустой запрос для создания плана"
+            logger.error(error_msg)
+            raise ValidationError(error_msg)
         
-        # Формируем план
-        plan = {
-            "id": str(uuid.uuid4()),
-            "timestamp": datetime.now().isoformat(),
-            "query": query,
-            "actions": actions
-        }
+        logger.info(f"Создание плана для запроса: '{query}'")
         
-        return plan
+        try:
+            # Получаем план от LLM сервиса
+            actions = self.llm_service.generate_actions(query)
+            
+            if not actions:
+                error_msg = "LLM сервис вернул пустой список действий"
+                logger.warning(error_msg)
+            
+            # Формируем план
+            plan_id = str(uuid.uuid4())
+            plan = {
+                "id": plan_id,
+                "timestamp": datetime.now().isoformat(),
+                "query": query,
+                "actions": actions
+            }
+            
+            logger.info(f"План '{plan_id}' создан. Количество действий: {len(actions)}")
+            
+            return plan
+        except Exception as e:
+            error_msg = f"Ошибка при создании плана: {str(e)}"
+            logger.exception(error_msg)
+            raise PlanError(error_msg) from e
     
-    def save_plan(self, plan, output_path=None):
+    def save_plan(self, plan: Dict[str, Any], output_path: Optional[str] = None) -> str:
         """Сохраняет план в файл.
         
         Args:
@@ -53,11 +80,40 @@ class Planner:
                 
         Returns:
             str: Путь к сохраненному файлу плана.
+            
+        Raises:
+            PlanError: Если не удалось сохранить план.
+            ValidationError: Если план некорректен.
         """
-        if output_path is None:
-            output_path = os.path.join(self.plans_dir, f"{plan['id']}.json")
+        if not plan:
+            error_msg = "Попытка сохранить пустой план"
+            logger.error(error_msg)
+            raise ValidationError(error_msg)
         
-        with open(output_path, 'w') as f:
-            json.dump(plan, f, indent=2)
+        if not isinstance(plan, dict):
+            error_msg = f"Некорректный тип плана: {type(plan)}, ожидается dict"
+            logger.error(error_msg)
+            raise ValidationError(error_msg)
         
-        return output_path
+        if "id" not in plan:
+            error_msg = "План не содержит идентификатор (id)"
+            logger.error(error_msg)
+            raise ValidationError(error_msg)
+        
+        try:
+            if output_path is None:
+                # Убедимся, что директория существует
+                os.makedirs(self.plans_dir, exist_ok=True)
+                output_path = os.path.join(self.plans_dir, f"{plan['id']}.json")
+            
+            logger.debug(f"Сохранение плана '{plan['id']}' в файл: {output_path}")
+            
+            with open(output_path, 'w') as f:
+                json.dump(plan, f, indent=2)
+            
+            logger.info(f"План успешно сохранен в файл: {output_path}")
+            return output_path
+        except Exception as e:
+            error_msg = f"Ошибка при сохранении плана: {str(e)}"
+            logger.exception(error_msg)
+            raise PlanError(error_msg) from e

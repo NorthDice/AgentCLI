@@ -3,9 +3,12 @@
 import os
 import json
 from datetime import datetime
+from typing import Dict, List, Any, Optional, Union
 
-from agentcli.core.file_ops import read_file, write_file
+from agentcli.core.file_ops import read_file, write_file, delete_file
 from agentcli.core.logger import Logger
+from agentcli.core.exceptions import ExecutionError, ActionError, RollbackError
+from agentcli.utils.logging import logger as app_logger
 
 
 class Executor:
@@ -21,7 +24,7 @@ class Executor:
         self.executed_actions = []
         self.failed_actions = []
         
-    def execute_plan(self, plan):
+    def execute_plan(self, plan: Dict[str, Any]) -> Dict[str, Any]:
         """Выполняет план действий.
         
         Args:
@@ -29,8 +32,14 @@ class Executor:
             
         Returns:
             dict: Результат выполнения плана.
+            
+        Raises:
+            ExecutionError: Если произошла ошибка при выполнении плана.
         """
         plan_id = plan.get("id", datetime.now().strftime("%Y%m%d%H%M%S"))
+        query = plan.get("query", "Неизвестный запрос")
+        
+        app_logger.info(f"Выполнение плана '{plan_id}'. Запрос: {query}")
         
         result = {
             "plan_id": plan_id,
@@ -40,24 +49,75 @@ class Executor:
             "failed_actions": []
         }
         
+        if not plan.get("actions"):
+            app_logger.warning(f"План '{plan_id}' не содержит действий")
+            return result
+        
         # Выполняем каждое действие из плана
-        for action in plan.get("actions", []):
-            action_result = self._execute_action(action)
+        for i, action in enumerate(plan.get("actions", [])):
+            action_type = action.get("type", "unknown")
+            description = action.get("description", "Нет описания")
             
-            if action_result["success"]:
-                self.executed_actions.append(action)
-                result["executed_actions"].append(action_result)
-            else:
+            app_logger.info(f"Выполнение действия {i+1}/{len(plan['actions'])}: {action_type} - {description}")
+            
+            try:
+                action_result = self._execute_action(action)
+                
+                if action_result["success"]:
+                    self.executed_actions.append(action)
+                    result["executed_actions"].append(action_result)
+                    app_logger.info(f"Действие успешно выполнено: {action_result['message']}")
+                else:
+                    self.failed_actions.append(action)
+                    result["failed_actions"].append(action_result)
+                    app_logger.error(f"Ошибка при выполнении действия: {action_result['message']}")
+                    break  # Останавливаем выполнение при первой ошибке
+            except ActionError as e:
+                error_msg = f"Ошибка при выполнении действия '{action_type}': {str(e)}"
+                app_logger.error(error_msg)
+                
+                action_result = {
+                    "action": action,
+                    "success": False,
+                    "message": str(e),
+                    "timestamp": datetime.now().isoformat(),
+                    "error": str(e)
+                }
+                
                 self.failed_actions.append(action)
                 result["failed_actions"].append(action_result)
-                break  # Останавливаем выполнение при первой ошибке
+                break
+            except Exception as e:
+                error_msg = f"Неожиданная ошибка при выполнении действия '{action_type}': {str(e)}"
+                app_logger.exception(error_msg)
+                
+                action_result = {
+                    "action": action,
+                    "success": False,
+                    "message": error_msg,
+                    "timestamp": datetime.now().isoformat(),
+                    "error": str(e)
+                }
+                
+                self.failed_actions.append(action)
+                result["failed_actions"].append(action_result)
+                break
         
         # Если нет ошибок, считаем план успешно выполненным
         result["success"] = len(result["failed_actions"]) == 0
         
+        if result["success"]:
+            app_logger.info(f"План '{plan_id}' успешно выполнен. Выполнено действий: {len(result['executed_actions'])}")
+        else:
+            app_logger.error(
+                f"План '{plan_id}' выполнен с ошибками. "
+                f"Выполнено действий: {len(result['executed_actions'])}, "
+                f"Ошибок: {len(result['failed_actions'])}"
+            )
+        
         return result
     
-    def _execute_action(self, action):
+    def _execute_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
         """Выполняет одно действие из плана.
         
         Args:
@@ -65,6 +125,9 @@ class Executor:
             
         Returns:
             dict: Результат выполнения действия.
+            
+        Raises:
+            ActionError: Если произошла ошибка при выполнении действия.
         """
         action_type = action.get("type", "unknown")
         path = action.get("path")
@@ -81,81 +144,127 @@ class Executor:
         try:
             if action_type == "create":
                 # Создание файла
-                if path and content is not None:  # content может быть пустой строкой
-                    # Если путь не абсолютный, используем текущую директорию
-                    if not os.path.isabs(path):
-                        path = os.path.join(os.getcwd(), path)
-                        
-                    write_file(path, content)
-                    self.logger.log_action("create", f"Создан файл: {path}", {"path": path})
-                    result["success"] = True
-                    result["message"] = f"Создан файл: {path}"
-                else:
-                    result["message"] = "Отсутствует путь или содержимое для создания файла"
+                if not path:
+                    error_msg = "Не указан путь для создания файла"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                if content is None:  # content может быть пустой строкой
+                    error_msg = "Не указано содержимое для создания файла"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                # Если путь не абсолютный, используем текущую директорию
+                if not os.path.isabs(path):
+                    path = os.path.join(os.getcwd(), path)
+                
+                # Проверяем, существует ли файл
+                if os.path.exists(path):
+                    error_msg = f"Файл уже существует: {path}"
+                    app_logger.warning(error_msg)
+                    # Здесь можно либо вызвать исключение, либо перезаписать файл
+                    # Решим перезаписать с предупреждением
+                
+                app_logger.debug(f"Создание файла: {path}")
+                write_file(path, content)
+                self.logger.log_action("create", f"Создан файл: {path}", {"path": path})
+                result["success"] = True
+                result["message"] = f"Создан файл: {path}"
             
             elif action_type == "modify":
                 # Изменение файла
-                if path and content is not None:  # content может быть пустой строкой
-                    # Если путь не абсолютный, используем текущую директорию
-                    if not os.path.isabs(path):
-                        path = os.path.join(os.getcwd(), path)
-                    
-                    # Сохраняем предыдущее содержимое для отката
-                    old_content = read_file(path) if os.path.exists(path) else ""
-                    
-                    # Записываем новое содержимое
-                    write_file(path, content)
-                    
-                    self.logger.log_action("modify", f"Изменен файл: {path}", {
-                        "path": path,
-                        "old_content": old_content,
-                        "new_content": content
-                    })
-                    
-                    result["success"] = True
-                    result["message"] = f"Изменен файл: {path}"
-                else:
-                    result["message"] = "Отсутствует путь или содержимое для изменения файла"
+                if not path:
+                    error_msg = "Не указан путь для изменения файла"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                if content is None:  # content может быть пустой строкой
+                    error_msg = "Не указано содержимое для изменения файла"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                # Если путь не абсолютный, используем текущую директорию
+                if not os.path.isabs(path):
+                    path = os.path.join(os.getcwd(), path)
+                
+                # Проверяем, существует ли файл
+                if not os.path.exists(path):
+                    error_msg = f"Файл для изменения не найден: {path}"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                app_logger.debug(f"Изменение файла: {path}")
+                # Сохраняем предыдущее содержимое для отката
+                old_content = read_file(path)
+                
+                # Записываем новое содержимое
+                write_file(path, content)
+                
+                self.logger.log_action("modify", f"Изменен файл: {path}", {
+                    "path": path,
+                    "old_content": old_content,
+                    "new_content": content
+                })
+                
+                result["success"] = True
+                result["message"] = f"Изменен файл: {path}"
             
             elif action_type == "delete":
                 # Удаление файла
-                if path:
-                    # Если путь не абсолютный, используем текущую директорию
-                    if not os.path.isabs(path):
-                        path = os.path.join(os.getcwd(), path)
-                        
-                    if os.path.exists(path):
-                        # Сохраняем содержимое для возможности отката
-                        old_content = read_file(path)
-                        
-                        # Удаляем файл
-                        os.remove(path)
-                        
-                        self.logger.log_action("delete", f"Удален файл: {path}", {
-                            "path": path,
-                            "content": old_content
-                        })
-                        
-                        result["success"] = True
-                        result["message"] = f"Удален файл: {path}"
-                    else:
-                        result["message"] = f"Файл не существует: {path}"
-                else:
-                    result["message"] = "Путь к файлу не указан"
+                if not path:
+                    error_msg = "Не указан путь для удаления файла"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                # Если путь не абсолютный, используем текущую директорию
+                if not os.path.isabs(path):
+                    path = os.path.join(os.getcwd(), path)
+                
+                # Проверяем, существует ли файл
+                if not os.path.exists(path):
+                    error_msg = f"Файл для удаления не найден: {path}"
+                    app_logger.warning(error_msg)
+                    # Здесь можно либо вызвать исключение, либо считать удаление успешным
+                    # Решим выдать предупреждение, но считать операцию успешной
+                    result["success"] = True
+                    result["message"] = f"Файл не найден (уже удален): {path}"
+                    return result
+                
+                app_logger.debug(f"Удаление файла: {path}")
+                # Сохраняем содержимое для возможности отката
+                old_content = read_file(path)
+                
+                # Удаляем файл
+                delete_file(path)
+                
+                self.logger.log_action("delete", f"Удален файл: {path}", {
+                    "path": path,
+                    "content": old_content
+                })
+                
+                result["success"] = True
+                result["message"] = f"Удален файл: {path}"
             
             elif action_type == "info":
                 # Информационное действие, не требующее изменений
+                app_logger.info(f"Информационное действие: {description}")
                 self.logger.log_action("info", description, action)
                 result["success"] = True
                 result["message"] = description
             
             else:
-                result["message"] = f"Неизвестный тип действия: {action_type}"
+                error_msg = f"Неизвестный тип действия: {action_type}"
+                app_logger.error(error_msg)
+                raise ActionError(error_msg, action)
+        
+        except ActionError:
+            # Пробрасываем ошибки действий дальше
+            raise
         
         except Exception as e:
-            result["success"] = False
-            result["message"] = f"Ошибка: {str(e)}"
-            result["error"] = str(e)
+            error_msg = f"Ошибка при выполнении действия '{action_type}': {str(e)}"
+            app_logger.exception(error_msg)
+            raise ActionError(error_msg, action, cause=e)
         
         return result
     

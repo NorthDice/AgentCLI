@@ -1,14 +1,30 @@
 
-
+import os
 import click
 
 from agentcli import __version__
+from agentcli.utils.logging import setup_logging
 
 
 @click.group()
 @click.version_option(version=__version__)
-def cli():
-    pass
+@click.option('--debug', is_flag=True, help='Включить режим отладки')
+@click.option('--log-file', help='Путь к файлу логов')
+def cli(debug, log_file):
+    """AgentCLI - инструмент разработчика для автономной работы с кодом на Python."""
+    # Устанавливаем уровень логирования
+    log_level = "DEBUG" if debug else os.environ.get("AGENTCLI_LOG_LEVEL", "INFO")
+    
+    # Если указан файл логов, перенаправляем логи в него
+    if log_file:
+        os.environ["AGENTCLI_LOG_FILE"] = log_file
+    
+    # Устанавливаем уровень логирования через переменную окружения
+    os.environ["AGENTCLI_LOG_LEVEL"] = log_level
+    
+    # Перенастраиваем логгер
+    setup_logging(log_level=log_level, 
+                  log_file=os.environ.get("AGENTCLI_LOG_FILE"))
 
 
 # Импорт команд

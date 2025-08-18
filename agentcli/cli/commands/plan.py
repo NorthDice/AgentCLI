@@ -46,6 +46,8 @@ def plan(query, output, format):
                 if output:
                     if not output.lower().endswith(f".{format}"):
                         output = f"{output}.{format}"
+                    # Если путь указан явно, используем его
+                    output = planner.save_plan(result_plan, output)
                 else:
                     # По умолчанию сохраняем в директорию plans
                     os.makedirs("plans", exist_ok=True)

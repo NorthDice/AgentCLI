@@ -3,11 +3,12 @@
 import os
 import json
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional, Union, Tuple
 
 from agentcli.core.file_ops import read_file, write_file, delete_file
 from agentcli.core.logger import Logger
-from agentcli.core.exceptions import ExecutionError, ActionError, RollbackError
+from agentcli.core.validator import PlanValidator
+from agentcli.core.exceptions import ExecutionError, ActionError, RollbackError, ValidationError
 from agentcli.utils.logging import logger as app_logger
 
 
@@ -21,20 +22,23 @@ class Executor:
             logger: Логгер для записи действий. Если не указан, создается новый.
         """
         self.logger = logger or Logger()
+        self.validator = PlanValidator()
         self.executed_actions = []
         self.failed_actions = []
         
-    def execute_plan(self, plan: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_plan(self, plan: Dict[str, Any], skip_validation: bool = False) -> Dict[str, Any]:
         """Выполняет план действий.
         
         Args:
             plan (dict): План действий для выполнения.
+            skip_validation (bool): Пропустить валидацию плана.
             
         Returns:
             dict: Результат выполнения плана.
             
         Raises:
             ExecutionError: Если произошла ошибка при выполнении плана.
+            ValidationError: Если план не прошел валидацию.
         """
         plan_id = plan.get("id", datetime.now().strftime("%Y%m%d%H%M%S"))
         query = plan.get("query", "Неизвестный запрос")
@@ -46,12 +50,31 @@ class Executor:
             "timestamp": datetime.now().isoformat(),
             "success": False,
             "executed_actions": [],
-            "failed_actions": []
+            "failed_actions": [],
+            "validation_issues": []
         }
         
         if not plan.get("actions"):
             app_logger.warning(f"План '{plan_id}' не содержит действий")
             return result
+            
+        # Валидация плана перед выполнением
+        if not skip_validation:
+            try:
+                app_logger.info(f"Валидация плана '{plan_id}'")
+                is_valid, issues = self.validator.validate_plan(plan)
+                result["validation_issues"] = issues
+                
+                if not is_valid:
+                    critical_issues = [issue for issue in issues if issue.get("critical", False)]
+                    app_logger.error(f"План '{plan_id}' не прошел валидацию. Обнаружено {len(critical_issues)} критических проблем")
+                    error_msg = f"План содержит критические проблемы и не может быть выполнен. Количество проблем: {len(critical_issues)}"
+                    raise ValidationError(error_msg)
+                    
+                app_logger.info(f"Валидация плана '{plan_id}' успешно пройдена. Найдено {len(issues)} некритических проблем")
+            except ValidationError as e:
+                app_logger.error(f"Ошибка при валидации плана: {str(e)}")
+                raise
         
         # Выполняем каждое действие из плана
         for i, action in enumerate(plan.get("actions", [])):
@@ -142,7 +165,7 @@ class Executor:
         }
         
         try:
-            if action_type == "create":
+            if action_type in ["create", "create_file"]:
                 # Создание файла
                 if not path:
                     error_msg = "Не указан путь для создания файла"
@@ -164,6 +187,12 @@ class Executor:
                     app_logger.warning(error_msg)
                     # Здесь можно либо вызвать исключение, либо перезаписать файл
                     # Решим перезаписать с предупреждением
+                
+                # Создаем директории, если они не существуют
+                directory = os.path.dirname(path)
+                if not os.path.exists(directory):
+                    os.makedirs(directory, exist_ok=True)
+                    app_logger.debug(f"Создана директория: {directory}")
                 
                 app_logger.debug(f"Создание файла: {path}")
                 write_file(path, content)

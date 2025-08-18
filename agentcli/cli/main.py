@@ -16,24 +16,19 @@ from agentcli.cli.commands.llm_config import llm_config
 
 @click.group()
 @click.version_option(version=__version__)
-@click.option('--debug', is_flag=True, help='Включить режим отладки')
-@click.option('--log-file', help='Путь к файлу логов')
+@click.option('--debug', is_flag=True, help='Enable debug mode')
+@click.option('--log-file', help='Path to log file')
 def cli(debug, log_file):
-    """AgentCLI - инструмент разработчика для автономной работы с кодом на Python."""
-    # Загружаем конфигурацию из .env файла
+    """AgentCLI - a developer tool for autonomous code operations in Python."""
     load_dotenv()
     
-    # Устанавливаем уровень логирования
     log_level = "DEBUG" if debug else os.environ.get("AGENTCLI_LOG_LEVEL", "INFO")
     
-    # Если указан файл логов, перенаправляем логи в него
     if log_file:
         os.environ["AGENTCLI_LOG_FILE"] = log_file
     
-    # Устанавливаем уровень логирования через переменную окружения
     os.environ["AGENTCLI_LOG_LEVEL"] = log_level
     
-    # Перенастраиваем логгер
     setup_logging(log_level=log_level, 
                   log_file=os.environ.get("AGENTCLI_LOG_FILE"))
 

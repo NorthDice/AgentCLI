@@ -1,4 +1,4 @@
-"""Команда rollback для отката изменений."""
+"""Rollback command for reverting changes."""
 
 import click
 from rich.console import Console
@@ -8,60 +8,60 @@ from agentcli.core.executor import Executor
 
 
 @click.command()
-@click.option("--steps", default=1, help="Количество шагов для отката")
-@click.option("--yes", "-y", is_flag=True, help="Подтверждение отката без запроса")
+@click.option("--steps", default=1, help="Number of steps to roll back")
+@click.option("--yes", "-y", is_flag=True, help="Confirm rollback without asking")
 def rollback(steps, yes):
-    """Откатывает последние изменения.
+    """Rolls back recent changes.
     
-    По умолчанию откатывается последнее действие. Используйте --steps, чтобы указать количество шагов для отката.
+    By default, the last action is rolled back. Use --steps to specify how many steps to roll back.
     """
     console = Console()
     
     if steps < 1:
-        console.print("[red]Ошибка:[/] Количество шагов должно быть положительным числом")
+        console.print("[red]Error:[/] Steps must be a positive number")
         return
     
-    # Подтверждение отката, если не указан флаг --yes
+    # Confirm rollback if --yes is not provided
     if not yes:
-        console.print(f"[yellow]Внимание:[/] Будут откачены последние {steps} действий.")
-        console.print("[yellow]Это действие нельзя отменить![/]")
+        console.print(f"[yellow]Warning:[/] The last {steps} actions will be rolled back.")
+        console.print("[yellow]This action cannot be undone![/]")
         
-        confirm = click.confirm("Продолжить?", default=False)
+        confirm = click.confirm("Continue?", default=False)
         if not confirm:
-            console.print("Отмена отката.")
+            console.print("Rollback canceled.")
             return
     
-    # Выполнение отката
-    with console.status(f"Откат последних {steps} действий..."):
+    # Perform rollback
+    with console.status(f"Rolling back the last {steps} actions..."):
         executor = Executor()
         result = executor.rollback(steps)
     
-    # Отображение результата
+    # Display result
     if result["success"]:
-        console.print(f"\n[bold green]✓[/] Успешно откачено {len(result['actions_rolled_back'])} действий")
+        console.print(f"\n[bold green]✓[/] Successfully rolled back {len(result['actions_rolled_back'])} actions")
         
-        # Отображаем откаченные действия
+        # Display rolled back actions
         for i, action in enumerate(result["actions_rolled_back"], 1):
             panel = Panel(
-                f"[bold]Тип:[/] {action['type']}\n"
-                f"[bold]Путь:[/] {action['path']}\n"
-                f"[bold]Описание:[/] {action['description']}",
-                title=f"Откачено #{i}",
+                f"[bold]Type:[/] {action['type']}\n"
+                f"[bold]Path:[/] {action['path']}\n"
+                f"[bold]Description:[/] {action['description']}",
+                title=f"Rolled back #{i}",
                 expand=False
             )
             console.print(panel)
     else:
-        console.print("[bold red]✗[/] Ошибка при откате изменений")
+        console.print("[bold red]✗[/] Error during rollback")
     
-    # Отображаем ошибки, если они есть
+    # Display errors if any
     if result.get("errors"):
-        console.print("\n[bold red]Ошибки при откате:[/]")
+        console.print("\n[bold red]Rollback errors:[/]")
         for error in result["errors"]:
             console.print(f"  [red]•[/] {error}")
     
-    # Отображаем предупреждение, если откачено меньше действий, чем запрошено
+    # Show warning if fewer actions were rolled back than requested
     if result["success"] and len(result["actions_rolled_back"]) < steps:
         console.print(
-            f"\n[yellow]Предупреждение:[/] Откачено {len(result['actions_rolled_back'])} из {steps} "
-            "запрошенных действий. Возможно, нет больше действий для отката."
+            f"\n[yellow]Warning:[/] Rolled back {len(result['actions_rolled_back'])} of {steps} "
+            "requested actions. There may be no more actions to roll back."
         )

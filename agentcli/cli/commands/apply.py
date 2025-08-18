@@ -1,4 +1,4 @@
-"""Команда apply для выполнения плана действий."""
+"""Apply command for executing an action plan."""
 
 import json
 import os
@@ -17,17 +17,16 @@ from agentcli.utils.logging import logger
 
 @click.command()
 @click.argument("plan_file", type=click.Path(exists=True), required=True)
-@click.option("--dry-run", is_flag=True, help="Показать, какие действия будут выполнены, без фактического выполнения")
-@click.option("--skip-validation", is_flag=True, help="Пропустить валидацию плана перед выполнением")
-@click.option("--yes", "-y", is_flag=True, help="Автоматически подтверждать действия без запроса")
+@click.option("--dry-run", is_flag=True, help="Show actions without executing them")
+@click.option("--skip-validation", is_flag=True, help="Skip validation before execution")
+@click.option("--yes", "-y", is_flag=True, help="Automatically confirm actions without asking")
 def apply(plan_file, dry_run, skip_validation, yes):
-    """Выполняет план действий из файла.
+    """Execute an action plan from file.
     
-    PLAN_FILE - путь к файлу плана (JSON/YAML).
+    PLAN_FILE - path to the plan file (JSON/YAML).
     """
     console = Console()
-    
-    # Загружаем план из файла
+
     try:
         with open(plan_file, 'r') as f:
             if plan_file.endswith('.yaml') or plan_file.endswith('.yml'):
@@ -35,34 +34,30 @@ def apply(plan_file, dry_run, skip_validation, yes):
             else:
                 plan = json.load(f)
     except Exception as e:
-        console.print(f"[bold red]Ошибка при загрузке плана:[/] {str(e)}")
+        console.print(f"[bold red]Error while loading plan:[/] {str(e)}")
         return
     
-    # Отображаем информацию о плане
-    console.print(f"[bold]План действий:[/] {plan.get('query', 'Без описания')}")
-    console.print(f"[bold]ID плана:[/] {plan.get('id', 'Не указан')}")
-    console.print(f"[bold]Количество действий:[/] {len(plan.get('actions', []))}")
+    console.print(f"[bold]Plan description:[/] {plan.get('query', 'No description')}")
+    console.print(f"[bold]Plan ID:[/] {plan.get('id', 'Not specified')}")
+    console.print(f"[bold]Number of actions:[/] {len(plan.get('actions', []))}")
     
-    # В режиме dry-run только показываем действия
     if dry_run:
-        console.print("\n[bold yellow]Режим предварительного просмотра (--dry-run)[/]")
-        console.print("[bold]Действия, которые будут выполнены:[/]")
+        console.print("\n[bold yellow]Dry-run mode (--dry-run)[/]")
+        console.print("[bold]Actions to be executed:[/]")
         
         for i, action in enumerate(plan.get("actions", []), 1):
             action_type = action.get("type", "unknown")
-            description = action.get("description", "Нет описания")
+            description = action.get("description", "No description")
             path = action.get("path", "")
             
             panel = Panel(
-                f"[bold]Тип:[/] {action_type}\n"
-                f"[bold]Путь:[/] {path}\n"
-                f"[bold]Описание:[/] {description}",
-                title=f"Действие #{i}",
+                f"[bold]Type:[/] {action_type}\n"
+                f"[bold]Path:[/] {path}\n"
+                f"[bold]Description:[/] {description}",
+                title=f"Action #{i}",
                 expand=False
             )
             console.print(panel)
-            
-            # Если есть содержимое, отображаем его с подсветкой синтаксиса
             if action.get("content") and path:
                 ext = os.path.splitext(path)[1] if path else ".txt"
                 syntax = Syntax(
@@ -75,32 +70,29 @@ def apply(plan_file, dry_run, skip_validation, yes):
         
         return
     
-    # Создаем исполнитель
     executor = Executor()
     
     try:
-        # Запускаем валидацию, если не задано --skip-validation
+
         if not skip_validation and not dry_run:
-            with console.status("[bold blue]Валидация плана...[/]"):
+            with console.status("[bold blue]Validating plan...[/]"):
                 is_valid, issues = executor.validator.validate_plan(plan)
             
-            # Если есть проблемы, показываем их
             if issues:
-                console.print("\n[bold yellow]Результаты валидации:[/]")
+                console.print("\n[bold yellow]Validation results:[/]")
                 
-                # Создаем таблицу с проблемами
-                table = Table(title="Найденные проблемы")
+                table = Table(title="Found issues")
                 table.add_column("№", style="dim")
-                table.add_column("Действие")
-                table.add_column("Тип")
-                table.add_column("Сообщение")
-                table.add_column("Критичность", style="bold")
+                table.add_column("Action")
+                table.add_column("Type")
+                table.add_column("Message")
+                table.add_column("Severity", style="bold")
                 
                 for i, issue in enumerate(issues, 1):
                     action_idx = issue.get("action_index", "N/A")
                     issue_type = issue.get("type", "unknown")
-                    message = issue.get("message", "Нет описания")
-                    criticality = "[bold red]Критическая[/]" if issue.get("critical", False) else "[green]Некритическая[/]"
+                    message = issue.get("message", "No description")
+                    criticality = "[bold red]Critical[/]" if issue.get("critical", False) else "[green]Non-critical[/]"
                     
                     table.add_row(
                         str(i),
@@ -112,51 +104,46 @@ def apply(plan_file, dry_run, skip_validation, yes):
                 
                 console.print(table)
                 
-                # Если есть критические проблемы, запрашиваем подтверждение
                 critical_issues = [issue for issue in issues if issue.get("critical", False)]
                 if critical_issues and not yes:
-                    if not Confirm.ask("\n[bold red]План содержит критические проблемы. Продолжить выполнение?[/]"):
-                        console.print("[yellow]Выполнение плана отменено пользователем[/]")
+                    if not Confirm.ask("\n[bold red]The plan contains critical issues. Continue anyway?[/]"):
+                        console.print("[yellow]Execution canceled by user[/]")
                         return
-        
-        # В режиме dry-run только показываем действия
         if dry_run:
             return
         
-        # Запрашиваем подтверждение перед выполнением плана
         if not yes:
             action_count = len(plan.get("actions", []))
-            if not Confirm.ask(f"\n[bold]Будет выполнено {action_count} действий. Продолжить?[/]"):
-                console.print("[yellow]Выполнение плана отменено пользователем[/]")
+            if not Confirm.ask(f"\n[bold]A total of {action_count} actions will be executed. Continue?[/]"):
+                console.print("[yellow]Execution canceled by user[/]")
                 return
         
-        # Выполняем план
-        with console.status("[bold green]Выполнение плана...[/]"):
-            result = executor.execute_plan(plan, skip_validation=True)  # Пропускаем повторную валидацию
+   
+        with console.status("[bold green]Executing plan...[/]"):
+            result = executor.execute_plan(plan, skip_validation=True)  
         
-        # Отображаем результат выполнения
+       
         if result["success"]:
-            console.print("\n[bold green]✓ План успешно выполнен![/]")
+            console.print("\n[bold green]✓ Plan executed successfully![/]")
         else:
-            console.print("\n[bold red]✗ Выполнение плана завершилось с ошибками[/]")
+            console.print("\n[bold red]✗ Plan execution finished with errors[/]")
     
     except ValidationError as e:
-        logger.error(f"Ошибка валидации: {str(e)}")
-        console.print(f"\n[bold red]✗ Ошибка валидации: {str(e)}[/]")
+        logger.error(f"Validation error: {str(e)}")
+        console.print(f"\n[bold red]✗ Validation error: {str(e)}[/]")
         return
-    
-    # Отображаем выполненные действия
+
     if result["executed_actions"]:
-        console.print("\n[bold green]Выполненные действия:[/]")
+        console.print("\n[bold green]Executed actions:[/]")
         for i, action_result in enumerate(result["executed_actions"], 1):
             action = action_result["action"]
             message = action_result["message"]
             
             console.print(f"{i}. [green]✓[/] {message}")
     
-    # Отображаем действия с ошибками
+
     if result["failed_actions"]:
-        console.print("\n[bold red]Действия с ошибками:[/]")
+        console.print("\n[bold red]Failed actions:[/]")
         for i, action_result in enumerate(result["failed_actions"], 1):
             action = action_result["action"]
             message = action_result["message"]

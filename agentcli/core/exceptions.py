@@ -1,31 +1,31 @@
-"""Пользовательские исключения для AgentCLI."""
+"""Custom exceptions for AgentCLI."""
 
 
 class AgentCLIError(Exception):
-    """Базовый класс для всех исключений AgentCLI."""
+    """Base class for all AgentCLI exceptions."""
     pass
 
 
 class PlanError(AgentCLIError):
-    """Ошибка при создании или загрузке плана."""
+    """Error during plan creation or loading."""
     pass
 
 
 class ExecutionError(AgentCLIError):
-    """Ошибка при выполнении плана."""
+    """Error while executing a plan."""
     pass
 
 
 class ActionError(AgentCLIError):
-    """Ошибка при выполнении конкретного действия."""
+    """Error while executing a specific action."""
     
     def __init__(self, message, action=None, cause=None):
-        """Инициализация исключения.
+        """Initialize the exception.
         
         Args:
-            message (str): Сообщение об ошибке
-            action (dict, optional): Действие, которое вызвало ошибку
-            cause (Exception, optional): Исключение, которое вызвало ошибку
+            message (str): Error message
+            action (dict, optional): Action that caused the error
+            cause (Exception, optional): Underlying exception that caused the error
         """
         self.action = action
         self.cause = cause
@@ -33,26 +33,26 @@ class ActionError(AgentCLIError):
 
 
 class RollbackError(AgentCLIError):
-    """Ошибка при откате изменений."""
+    """Error during rollback of changes."""
     pass
 
 
 class ValidationError(AgentCLIError):
-    """Ошибка валидации плана или действия."""
+    """Validation error in a plan or action."""
     pass
 
 
 class FileOperationError(AgentCLIError):
-    """Ошибка при операциях с файлами."""
+    """Error during file operations."""
     
     def __init__(self, message, file_path=None, operation=None, cause=None):
-        """Инициализация исключения.
+        """Initialize the exception.
         
         Args:
-            message (str): Сообщение об ошибке
-            file_path (str, optional): Путь к файлу
-            operation (str, optional): Тип операции (read, write, delete)
-            cause (Exception, optional): Исключение, которое вызвало ошибку
+            message (str): Error message
+            file_path (str, optional): Path to the file
+            operation (str, optional): Operation type (read, write, delete)
+            cause (Exception, optional): Underlying exception that caused the error
         """
         self.file_path = file_path
         self.operation = operation
@@ -61,5 +61,5 @@ class FileOperationError(AgentCLIError):
 
 
 class LLMServiceError(AgentCLIError):
-    """Ошибка при взаимодействии с LLM сервисом."""
+    """Error while interacting with the LLM service."""
     pass

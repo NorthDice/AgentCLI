@@ -1,4 +1,4 @@
-"""Модуль для валидации планов перед выполнением."""
+"""Module for validating plans before execution."""
 
 import os
 import stat
@@ -9,87 +9,87 @@ from agentcli.utils.logging import logger
 
 
 class PlanValidator:
-    """Класс для валидации плана перед выполнением."""
+    """Class for validating a plan before execution."""
 
     def __init__(self):
-        """Инициализация валидатора плана."""
+        """Initialize the plan validator."""
         pass
 
     def validate_plan(self, plan: Dict[str, Any]) -> Tuple[bool, List[Dict[str, Any]]]:
-        """Валидирует план перед выполнением.
+        """Validates a plan before execution.
         
         Args:
-            plan (dict): План для валидации.
+            plan (dict): The plan to validate.
             
         Returns:
-            tuple: (success, issues) - успешность валидации и список проблем.
+            tuple: (success, issues) - validation success and list of issues.
             
         Raises:
-            ValidationError: Если валидация не может быть выполнена.
+            ValidationError: If validation cannot be performed.
         """
         if not plan or not isinstance(plan, dict):
-            logger.error("Некорректный формат плана")
-            raise ValidationError("Некорректный формат плана")
+            logger.error("Invalid plan format")
+            raise ValidationError("Invalid plan format")
         
         if not plan.get("actions"):
-            logger.warning("План не содержит действий")
+            logger.warning("The plan contains no actions")
             return True, []
         
         issues = []
         
-        # Валидация каждого действия
+        # Validate each action
         for i, action in enumerate(plan.get("actions", [])):
             action_issues = self._validate_action(action, i + 1)
             issues.extend(action_issues)
         
-        # Проверка зависимостей между действиями
+        # Check dependencies between actions
         dependency_issues = self._validate_dependencies(plan.get("actions", []))
         issues.extend(dependency_issues)
         
-        # План валиден, если нет критических проблем
+        # Plan is valid if there are no critical issues
         success = not any(issue.get("critical", False) for issue in issues)
         
         if issues:
-            logger.warning(f"Найдено {len(issues)} проблем при валидации плана")
+            logger.warning(f"Found {len(issues)} issues during plan validation")
         else:
-            logger.info("План успешно прошел валидацию")
+            logger.info("Plan successfully passed validation")
         
         return success, issues
 
     def _validate_action(self, action: Dict[str, Any], index: int) -> List[Dict[str, Any]]:
-        """Валидирует отдельное действие.
+        """Validates an individual action.
         
         Args:
-            action (dict): Действие для валидации.
-            index (int): Индекс действия в плане.
+            action (dict): Action to validate.
+            index (int): Index of the action in the plan.
             
         Returns:
-            list: Список проблем с действием.
+            list: List of issues with the action.
         """
         issues = []
         
-        # Проверяем обязательные поля
+        # Check required fields
         required_fields = ["type"]
         for field in required_fields:
             if field not in action:
                 issues.append({
                     "action_index": index,
                     "type": "missing_field",
-                    "message": f"Отсутствует обязательное поле '{field}'",
+                    "message": f"Missing required field '{field}'",
                     "critical": True
                 })
         
-        # Проверяем поле path для действий, которые работают с файлами
+        # Check path for file-related actions
         file_actions = ["create_file", "update_file", "delete_file", "read_file"]
         if action.get("type") in file_actions and not action.get("path"):
             issues.append({
                 "action_index": index,
                 "type": "missing_path",
-                "message": f"Действие типа '{action.get('type')}' требует указания пути",
+                "message": f"Action of type '{action.get('type')}' requires a path",
                 "critical": True
             })
         
-        # Если действие работает с файлом, проверяем права доступа и конфликты
+        # If action works with a file, validate permissions and conflicts
         if action.get("path") and action.get("type") in file_actions:
             path_issues = self._validate_path(action, index)
             issues.extend(path_issues)
@@ -97,36 +97,36 @@ class PlanValidator:
         return issues
 
     def _validate_path(self, action: Dict[str, Any], index: int) -> List[Dict[str, Any]]:
-        """Валидирует путь к файлу.
+        """Validates a file path.
         
         Args:
-            action (dict): Действие для валидации.
-            index (int): Индекс действия в плане.
+            action (dict): Action to validate.
+            index (int): Index of the action in the plan.
             
         Returns:
-            list: Список проблем с путем.
+            list: List of issues with the path.
         """
         issues = []
         path = action.get("path")
         action_type = action.get("type")
         
-        # Проверка абсолютного пути
+        # Check for absolute path
         if not os.path.isabs(path):
             issues.append({
                 "action_index": index,
                 "type": "relative_path",
-                "message": f"Путь '{path}' должен быть абсолютным",
-                "critical": False  # Не критично, можно преобразовать
+                "message": f"Path '{path}' should be absolute",
+                "critical": False  # Not critical, can be fixed
             })
         
-        # Проверка прав доступа
+        # Check permissions
         if action_type in ["create_file", "update_file"] and os.path.dirname(path):
             parent_dir = os.path.dirname(path)
             if os.path.exists(parent_dir) and not os.access(parent_dir, os.W_OK):
                 issues.append({
                     "action_index": index,
                     "type": "permission_denied",
-                    "message": f"Нет прав на запись в директорию '{parent_dir}'",
+                    "message": f"No write permission for directory '{parent_dir}'",
                     "critical": True
                 })
         elif action_type == "read_file" and os.path.exists(path):
@@ -134,39 +134,39 @@ class PlanValidator:
                 issues.append({
                     "action_index": index,
                     "type": "permission_denied",
-                    "message": f"Нет прав на чтение файла '{path}'",
+                    "message": f"No read permission for file '{path}'",
                     "critical": True
                 })
         
-        # Проверка конфликтов
+        # Check for conflicts
         if action_type == "create_file" and os.path.exists(path):
             issues.append({
                 "action_index": index,
                 "type": "file_exists",
-                "message": f"Файл '{path}' уже существует и будет перезаписан",
-                "critical": False  # Не критично, но требует внимания
+                "message": f"File '{path}' already exists and will be overwritten",
+                "critical": False  # Not critical, but attention needed
             })
         elif action_type == "delete_file" and not os.path.exists(path):
             issues.append({
                 "action_index": index,
                 "type": "file_not_exists",
-                "message": f"Файл '{path}' не существует и не может быть удален",
+                "message": f"File '{path}' does not exist and cannot be deleted",
                 "critical": True
             })
         
         return issues
 
     def _validate_dependencies(self, actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Проверяет зависимости между действиями.
+        """Checks dependencies between actions.
         
         Args:
-            actions (list): Список действий для проверки.
+            actions (list): List of actions to check.
             
         Returns:
-            list: Список проблем с зависимостями.
+            list: List of dependency issues.
         """
         issues = []
-        file_states = {}  # Отслеживание состояния файлов
+        file_states = {}  # Track file states
         
         for i, action in enumerate(actions):
             action_type = action.get("type")
@@ -175,26 +175,26 @@ class PlanValidator:
             if not path or action_type not in ["create_file", "update_file", "delete_file", "read_file"]:
                 continue
             
-            # Проверка логических зависимостей
+            # Check logical dependencies
             if action_type == "read_file" and path not in file_states:
-                # Чтение файла, который еще не создан в плане
+                # Reading a file not yet created in the plan
                 if not os.path.exists(path):
                     issues.append({
                         "action_index": i + 1,
                         "type": "dependency_error",
-                        "message": f"Чтение файла '{path}', который не существует и не создан в плане",
+                        "message": f"Reading file '{path}' which does not exist and is not created in the plan",
                         "critical": True
                     })
             elif action_type == "delete_file" and path in file_states and file_states[path] == "deleted":
-                # Удаление уже удаленного файла
+                # Deleting a file already deleted
                 issues.append({
                     "action_index": i + 1,
                     "type": "dependency_error",
-                    "message": f"Повторное удаление файла '{path}'",
+                    "message": f"Repeated deletion of file '{path}'",
                     "critical": True
                 })
             
-            # Обновляем состояние файла
+            # Update file state
             if action_type in ["create_file", "update_file"]:
                 file_states[path] = "exists"
             elif action_type == "delete_file":

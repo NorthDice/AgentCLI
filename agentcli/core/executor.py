@@ -1,4 +1,4 @@
-"""Модуль исполнителя для выполнения планов действий."""
+"""Executor module for executing action plans."""
 
 import os
 import json
@@ -13,13 +13,13 @@ from agentcli.utils.logging import logger as app_logger
 
 
 class Executor:
-    """Класс для выполнения планов действий."""
+    """Class for executing action plans."""
     
     def __init__(self, logger=None):
-        """Инициализация исполнителя.
+        """Initialize the executor.
         
         Args:
-            logger: Логгер для записи действий. Если не указан, создается новый.
+            logger: Logger for recording actions. If not specified, a new one will be created.
         """
         self.logger = logger or Logger()
         self.validator = PlanValidator()
@@ -27,23 +27,23 @@ class Executor:
         self.failed_actions = []
         
     def execute_plan(self, plan: Dict[str, Any], skip_validation: bool = False) -> Dict[str, Any]:
-        """Выполняет план действий.
+        """Executes an action plan.
         
         Args:
-            plan (dict): План действий для выполнения.
-            skip_validation (bool): Пропустить валидацию плана.
+            plan (dict): The action plan to execute.
+            skip_validation (bool): Skip plan validation.
             
         Returns:
-            dict: Результат выполнения плана.
+            dict: Execution result of the plan.
             
         Raises:
-            ExecutionError: Если произошла ошибка при выполнении плана.
-            ValidationError: Если план не прошел валидацию.
+            ExecutionError: If an error occurs during plan execution.
+            ValidationError: If the plan fails validation.
         """
         plan_id = plan.get("id", datetime.now().strftime("%Y%m%d%H%M%S"))
-        query = plan.get("query", "Неизвестный запрос")
+        query = plan.get("query", "Unknown query")
         
-        app_logger.info(f"Выполнение плана '{plan_id}'. Запрос: {query}")
+        app_logger.info(f"Executing plan '{plan_id}'. Query: {query}")
         
         result = {
             "plan_id": plan_id,
@@ -55,33 +55,33 @@ class Executor:
         }
         
         if not plan.get("actions"):
-            app_logger.warning(f"План '{plan_id}' не содержит действий")
+            app_logger.warning(f"Plan '{plan_id}' does not contain actions")
             return result
             
-        # Валидация плана перед выполнением
+        # Validate the plan before execution
         if not skip_validation:
             try:
-                app_logger.info(f"Валидация плана '{plan_id}'")
+                app_logger.info(f"Validating plan '{plan_id}'")
                 is_valid, issues = self.validator.validate_plan(plan)
                 result["validation_issues"] = issues
                 
                 if not is_valid:
                     critical_issues = [issue for issue in issues if issue.get("critical", False)]
-                    app_logger.error(f"План '{plan_id}' не прошел валидацию. Обнаружено {len(critical_issues)} критических проблем")
-                    error_msg = f"План содержит критические проблемы и не может быть выполнен. Количество проблем: {len(critical_issues)}"
+                    app_logger.error(f"Plan '{plan_id}' failed validation. Found {len(critical_issues)} critical issues")
+                    error_msg = f"Plan contains critical issues and cannot be executed. Number of issues: {len(critical_issues)}"
                     raise ValidationError(error_msg)
                     
-                app_logger.info(f"Валидация плана '{plan_id}' успешно пройдена. Найдено {len(issues)} некритических проблем")
+                app_logger.info(f"Plan '{plan_id}' validation successful. Found {len(issues)} non-critical issues")
             except ValidationError as e:
-                app_logger.error(f"Ошибка при валидации плана: {str(e)}")
+                app_logger.error(f"Validation error: {str(e)}")
                 raise
         
-        # Выполняем каждое действие из плана
+        # Execute each action in the plan
         for i, action in enumerate(plan.get("actions", [])):
             action_type = action.get("type", "unknown")
-            description = action.get("description", "Нет описания")
+            description = action.get("description", "No description")
             
-            app_logger.info(f"Выполнение действия {i+1}/{len(plan['actions'])}: {action_type} - {description}")
+            app_logger.info(f"Executing action {i+1}/{len(plan['actions'])}: {action_type} - {description}")
             
             try:
                 action_result = self._execute_action(action)
@@ -89,14 +89,14 @@ class Executor:
                 if action_result["success"]:
                     self.executed_actions.append(action)
                     result["executed_actions"].append(action_result)
-                    app_logger.info(f"Действие успешно выполнено: {action_result['message']}")
+                    app_logger.info(f"Action executed successfully: {action_result['message']}")
                 else:
                     self.failed_actions.append(action)
                     result["failed_actions"].append(action_result)
-                    app_logger.error(f"Ошибка при выполнении действия: {action_result['message']}")
-                    break  # Останавливаем выполнение при первой ошибке
+                    app_logger.error(f"Action execution error: {action_result['message']}")
+                    break  # Stop execution on first error
             except ActionError as e:
-                error_msg = f"Ошибка при выполнении действия '{action_type}': {str(e)}"
+                error_msg = f"Error executing action '{action_type}': {str(e)}"
                 app_logger.error(error_msg)
                 
                 action_result = {
@@ -111,7 +111,7 @@ class Executor:
                 result["failed_actions"].append(action_result)
                 break
             except Exception as e:
-                error_msg = f"Неожиданная ошибка при выполнении действия '{action_type}': {str(e)}"
+                error_msg = f"Unexpected error executing action '{action_type}': {str(e)}"
                 app_logger.exception(error_msg)
                 
                 action_result = {
@@ -126,35 +126,35 @@ class Executor:
                 result["failed_actions"].append(action_result)
                 break
         
-        # Если нет ошибок, считаем план успешно выполненным
+        # If no errors, mark the plan as successful
         result["success"] = len(result["failed_actions"]) == 0
         
         if result["success"]:
-            app_logger.info(f"План '{plan_id}' успешно выполнен. Выполнено действий: {len(result['executed_actions'])}")
+            app_logger.info(f"Plan '{plan_id}' executed successfully. Actions executed: {len(result['executed_actions'])}")
         else:
             app_logger.error(
-                f"План '{plan_id}' выполнен с ошибками. "
-                f"Выполнено действий: {len(result['executed_actions'])}, "
-                f"Ошибок: {len(result['failed_actions'])}"
+                f"Plan '{plan_id}' executed with errors. "
+                f"Executed actions: {len(result['executed_actions'])}, "
+                f"Errors: {len(result['failed_actions'])}"
             )
         
         return result
     
     def _execute_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
-        """Выполняет одно действие из плана.
+        """Executes a single action from the plan.
         
         Args:
-            action (dict): Действие для выполнения.
+            action (dict): The action to execute.
             
         Returns:
-            dict: Результат выполнения действия.
+            dict: Execution result of the action.
             
         Raises:
-            ActionError: Если произошла ошибка при выполнении действия.
+            ActionError: If an error occurs while executing the action.
         """
         action_type = action.get("type", "unknown")
         path = action.get("path")
-        description = action.get("description", "Без описания")
+        description = action.get("description", "No description")
         content = action.get("content")
         
         result = {
@@ -166,145 +166,145 @@ class Executor:
         
         try:
             if action_type in ["create", "create_file"]:
-                # Создание файла
+                # Create file
                 if not path:
-                    error_msg = "Не указан путь для создания файла"
+                    error_msg = "File path not specified for creation"
                     app_logger.error(error_msg)
                     raise ActionError(error_msg, action)
                 
-                if content is None:  # content может быть пустой строкой
-                    error_msg = "Не указано содержимое для создания файла"
+                if content is None:  # content may be an empty string
+                    error_msg = "No content specified for file creation"
                     app_logger.error(error_msg)
                     raise ActionError(error_msg, action)
                 
-                # Если путь не абсолютный, используем текущую директорию
+                # If path is not absolute, use current directory
                 if not os.path.isabs(path):
                     path = os.path.join(os.getcwd(), path)
                 
-                # Проверяем, существует ли файл
+                # Check if file already exists
                 if os.path.exists(path):
-                    error_msg = f"Файл уже существует: {path}"
+                    error_msg = f"File already exists: {path}"
                     app_logger.warning(error_msg)
-                    # Здесь можно либо вызвать исключение, либо перезаписать файл
-                    # Решим перезаписать с предупреждением
+                    # Could raise an error or overwrite the file
+                    # Decide to overwrite with a warning
                 
-                # Создаем директории, если они не существуют
+                # Create directories if they don't exist
                 directory = os.path.dirname(path)
                 if not os.path.exists(directory):
                     os.makedirs(directory, exist_ok=True)
-                    app_logger.debug(f"Создана директория: {directory}")
+                    app_logger.debug(f"Directory created: {directory}")
                 
-                app_logger.debug(f"Создание файла: {path}")
+                app_logger.debug(f"Creating file: {path}")
                 write_file(path, content)
-                self.logger.log_action("create", f"Создан файл: {path}", {"path": path})
+                self.logger.log_action("create", f"File created: {path}", {"path": path})
                 result["success"] = True
-                result["message"] = f"Создан файл: {path}"
+                result["message"] = f"File created: {path}"
             
             elif action_type == "modify":
-                # Изменение файла
+                # Modify file
                 if not path:
-                    error_msg = "Не указан путь для изменения файла"
+                    error_msg = "File path not specified for modification"
                     app_logger.error(error_msg)
                     raise ActionError(error_msg, action)
                 
-                if content is None:  # content может быть пустой строкой
-                    error_msg = "Не указано содержимое для изменения файла"
+                if content is None:  # content may be an empty string
+                    error_msg = "No content specified for file modification"
                     app_logger.error(error_msg)
                     raise ActionError(error_msg, action)
                 
-                # Если путь не абсолютный, используем текущую директорию
+                # If path is not absolute, use current directory
                 if not os.path.isabs(path):
                     path = os.path.join(os.getcwd(), path)
                 
-                # Проверяем, существует ли файл
+                # Check if file exists
                 if not os.path.exists(path):
-                    error_msg = f"Файл для изменения не найден: {path}"
+                    error_msg = f"File not found for modification: {path}"
                     app_logger.error(error_msg)
                     raise ActionError(error_msg, action)
                 
-                app_logger.debug(f"Изменение файла: {path}")
-                # Сохраняем предыдущее содержимое для отката
+                app_logger.debug(f"Modifying file: {path}")
+                # Save old content for rollback
                 old_content = read_file(path)
                 
-                # Записываем новое содержимое
+                # Write new content
                 write_file(path, content)
                 
-                self.logger.log_action("modify", f"Изменен файл: {path}", {
+                self.logger.log_action("modify", f"File modified: {path}", {
                     "path": path,
                     "old_content": old_content,
                     "new_content": content
                 })
                 
                 result["success"] = True
-                result["message"] = f"Изменен файл: {path}"
+                result["message"] = f"File modified: {path}"
             
             elif action_type == "delete":
-                # Удаление файла
+                # Delete file
                 if not path:
-                    error_msg = "Не указан путь для удаления файла"
+                    error_msg = "File path not specified for deletion"
                     app_logger.error(error_msg)
                     raise ActionError(error_msg, action)
                 
-                # Если путь не абсолютный, используем текущую директорию
+                # If path is not absolute, use current directory
                 if not os.path.isabs(path):
                     path = os.path.join(os.getcwd(), path)
                 
-                # Проверяем, существует ли файл
+                # Check if file exists
                 if not os.path.exists(path):
-                    error_msg = f"Файл для удаления не найден: {path}"
+                    error_msg = f"File not found for deletion: {path}"
                     app_logger.warning(error_msg)
-                    # Здесь можно либо вызвать исключение, либо считать удаление успешным
-                    # Решим выдать предупреждение, но считать операцию успешной
+                    # Could raise error or treat as successful deletion
+                    # Decide to warn but treat as successful
                     result["success"] = True
-                    result["message"] = f"Файл не найден (уже удален): {path}"
+                    result["message"] = f"File not found (already deleted): {path}"
                     return result
                 
-                app_logger.debug(f"Удаление файла: {path}")
-                # Сохраняем содержимое для возможности отката
+                app_logger.debug(f"Deleting file: {path}")
+                # Save content for rollback
                 old_content = read_file(path)
                 
-                # Удаляем файл
+                # Delete file
                 delete_file(path)
                 
-                self.logger.log_action("delete", f"Удален файл: {path}", {
+                self.logger.log_action("delete", f"File deleted: {path}", {
                     "path": path,
                     "content": old_content
                 })
                 
                 result["success"] = True
-                result["message"] = f"Удален файл: {path}"
+                result["message"] = f"File deleted: {path}"
             
             elif action_type == "info":
-                # Информационное действие, не требующее изменений
-                app_logger.info(f"Информационное действие: {description}")
+                # Informational action, no changes required
+                app_logger.info(f"Informational action: {description}")
                 self.logger.log_action("info", description, action)
                 result["success"] = True
                 result["message"] = description
             
             else:
-                error_msg = f"Неизвестный тип действия: {action_type}"
+                error_msg = f"Unknown action type: {action_type}"
                 app_logger.error(error_msg)
                 raise ActionError(error_msg, action)
         
         except ActionError:
-            # Пробрасываем ошибки действий дальше
+            # Reraise action errors
             raise
         
         except Exception as e:
-            error_msg = f"Ошибка при выполнении действия '{action_type}': {str(e)}"
+            error_msg = f"Error executing action '{action_type}': {str(e)}"
             app_logger.exception(error_msg)
             raise ActionError(error_msg, action, cause=e)
         
         return result
     
     def rollback(self, steps=1):
-        """Откатывает последние выполненные действия.
+        """Rolls back the last executed actions.
         
         Args:
-            steps (int): Количество шагов для отката.
+            steps (int): Number of steps to roll back.
             
         Returns:
-            dict: Результат отката.
+            dict: Rollback result.
         """
         result = {
             "success": False,
@@ -313,10 +313,10 @@ class Executor:
             "timestamp": datetime.now().isoformat()
         }
         
-        # Получаем логи действий в обратном порядке (от новых к старым)
+        # Get action logs in reverse order (newest first)
         log_dir = self.logger.log_dir
         if not os.path.exists(log_dir):
-            result["errors"].append("Журнал действий не найден")
+            result["errors"].append("Action log not found")
             return result
         
         log_files = sorted(
@@ -325,10 +325,10 @@ class Executor:
             reverse=True
         )
         
-        # Определяем количество логов для отката
+        # Determine number of logs to rollback
         logs_to_rollback = min(steps, len(log_files))
         if logs_to_rollback == 0:
-            result["errors"].append("Нет действий для отката")
+            result["errors"].append("No actions to roll back")
             return result
         
         rolled_back = 0
@@ -339,30 +339,30 @@ class Executor:
             log_path = os.path.join(log_dir, log_files[i])
             
             try:
-                # Загружаем лог
+                # Load log
                 with open(log_path, 'r') as f:
                     log = json.load(f)
                 
-                # Откатываем действие в зависимости от его типа
+                # Rollback action depending on its type
                 action_type = log.get("action")
                 details = log.get("details", {})
                 
                 if action_type == "create":
-                    # Для созданного файла - удаляем его
+                    # For created file - delete it
                     path = details.get("path")
                     if path and os.path.exists(path):
                         os.remove(path)
                         result["actions_rolled_back"].append({
                             "type": "delete",
                             "path": path,
-                            "description": f"Удален файл, созданный действием: {log.get('description')}"
+                            "description": f"File deleted, created by action: {log.get('description')}"
                         })
                         rolled_back += 1
                     else:
-                        result["errors"].append(f"Файл не найден: {path}")
+                        result["errors"].append(f"File not found: {path}")
                 
                 elif action_type == "modify":
-                    # Для измененного файла - возвращаем предыдущее содержимое
+                    # For modified file - restore previous content
                     path = details.get("path")
                     old_content = details.get("old_content")
                     
@@ -371,14 +371,14 @@ class Executor:
                         result["actions_rolled_back"].append({
                             "type": "restore",
                             "path": path,
-                            "description": f"Восстановлено предыдущее состояние файла: {path}"
+                            "description": f"Previous state restored for file: {path}"
                         })
                         rolled_back += 1
                     else:
-                        result["errors"].append(f"Недостаточно данных для отката изменения файла: {path}")
+                        result["errors"].append(f"Not enough data to rollback file modification: {path}")
                 
                 elif action_type == "delete":
-                    # Для удаленного файла - восстанавливаем его
+                    # For deleted file - restore it
                     path = details.get("path")
                     content = details.get("content")
                     
@@ -387,26 +387,26 @@ class Executor:
                         result["actions_rolled_back"].append({
                             "type": "restore",
                             "path": path,
-                            "description": f"Восстановлен удаленный файл: {path}"
+                            "description": f"Deleted file restored: {path}"
                         })
                         rolled_back += 1
                     else:
-                        result["errors"].append(f"Недостаточно данных для восстановления файла: {path}")
+                        result["errors"].append(f"Not enough data to restore deleted file: {path}")
                 
-                # Логируем откат действия
+                # Log rollback action
                 self.logger.log_action(
                     "rollback",
-                    f"Откат действия: {log.get('description', 'Неизвестное действие')}",
+                    f"Rollback of action: {log.get('description', 'Unknown action')}",
                     {"original_action": log}
                 )
                 
-                # Удаляем лог откаченного действия
+                # Delete log of rolled back action
                 os.remove(log_path)
                 
             except Exception as e:
-                result["errors"].append(f"Ошибка отката действия: {str(e)}")
+                result["errors"].append(f"Error rolling back action: {str(e)}")
         
-        # Обновляем результат
+        # Update result
         result["success"] = rolled_back > 0
         
         return result

@@ -1,4 +1,4 @@
-"""Команда gen для генерации кода."""
+"""Gen command for code generation."""
 
 import os
 import click
@@ -12,69 +12,58 @@ from agentcli.utils.logging import logger
 
 @click.command()
 @click.argument("description", required=True)
-@click.option("--output", "-o", help="Путь к выходному файлу")
+@click.option("--output", "-o", help="Path to output file")
 def gen(description, output):
-    """Генерирует код на основе описания.
+    """Generate code based on description.
     
-    DESCRIPTION - описание кода для генерации.
+    DESCRIPTION - description of code to generate.
     """
-    click.echo(f"Генерация кода по описанию: {description}")
+    click.echo(f"Generating code for: {description}")
     
-    # Создаем LLM сервис
     try:
-        # Инициализируем LLM сервис
         llm_service = create_llm_service()
         
-        # Инициализируем логгер для регистрации действий (для возможности отката)
         action_logger = Logger()
         
-        # Формируем запрос для генерации кода
-        query = f"Сгенерируй код для: {description}. Верни только код без комментариев вокруг."
+        query = f"Generate code for: {description}. Return only code without surrounding comments."
         
-        # Получаем результат от LLM
         actions = llm_service.generate_actions(query)
         
         if not actions:
-            click.echo("Не удалось сгенерировать код.", err=True)
+            click.echo("Failed to generate code.", err=True)
             return
         
-        # Ищем действие с кодом (create_file или info)
         code_action = next((a for a in actions if a.get('type') in ['create_file', 'info']), None)
         
         if not code_action:
-            click.echo("Не удалось получить код из ответа LLM.", err=True)
+            click.echo("Failed to extract code from LLM response.", err=True)
             return
         
         code = code_action.get('content', '')
         
         if output:
-            # Записываем результат в файл
             try:
-                click.echo(f"Вывод в файл: {output}")
-                # Если путь не абсолютный, делаем его абсолютным
+                click.echo(f"Output to file: {output}")
+                
                 if not os.path.isabs(output):
                     output = os.path.join(os.getcwd(), output)
                     
-                # Создаем директории, если они не существуют
                 directory = os.path.dirname(output)
                 if directory and not os.path.exists(directory):
                     os.makedirs(directory, exist_ok=True)
                     
-                # Записываем файл
                 write_file(output, code)
                 
-                # Регистрируем действие в логгере (для возможности отката)
-                action_logger.log_action("create", f"Создан файл: {output}", {"path": output})
+                action_logger.log_action("create", f"Created file: {output}", {"path": output})
                 
-                click.echo(f"✅ Код успешно сгенерирован и сохранен в файл: {output}")
+                click.echo(f"✅ Code successfully generated and saved to file: {output}")
             except Exception as e:
-                click.echo(f"❌ Ошибка при записи файла: {str(e)}", err=True)
+                click.echo(f"❌ Error writing to file: {str(e)}", err=True)
         else:
-            # Выводим результат в консоль
-            click.echo("\n--- Сгенерированный код ---\n")
+            click.echo("\n--- Generated Code ---\n")
             click.echo(code)
             click.echo("\n-------------------------\n")
     
     except LLMServiceError as e:
-        click.echo(f"❌ Ошибка при работе с LLM сервисом: {str(e)}", err=True)
-        logger.error(f"Ошибка при генерации кода: {str(e)}")
+        click.echo(f"❌ Error working with LLM service: {str(e)}", err=True)
+        logger.error(f"Error generating code: {str(e)}")

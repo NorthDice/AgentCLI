@@ -1,24 +1,24 @@
-"""Модуль с базовыми классами для LLM сервисов."""
+"""Module with base classes for LLM services."""
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 
 
 class LLMService(ABC):
-    """Абстрактный базовый класс для LLM сервисов."""
+    """Abstract base class for LLM services."""
     
     def __init__(self):
-        """Инициализация сервиса."""
+        """Initialize service."""
         pass
     
     @abstractmethod
     def generate_actions(self, query: str) -> List[Dict[str, Any]]:
-        """Генерирует список действий на основе запроса.
+        """Generate list of actions based on query.
         
         Args:
-            query (str): Запрос на естественном языке.
+            query (str): Natural language query.
             
         Returns:
-            List[Dict[str, Any]]: Список действий.
+            List[Dict[str, Any]]: List of actions.
         """
         pass

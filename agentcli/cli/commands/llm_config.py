@@ -1,5 +1,5 @@
 """
-Команда для проверки конфигурации LLM сервисов
+Command for checking LLM service configuration
 """
 import os
 import click
@@ -11,13 +11,11 @@ from agentcli.core import create_llm_service, LLMServiceError
 
 
 @click.command()
-@click.option('--test', is_flag=True, help='Проверить соединение с LLM сервисом')
+@click.option('--test', is_flag=True, help='Test connection to LLM service')
 def llm_config(test):
-    """Проверка конфигурации LLM сервиса."""
-    # Загружаем .env файл
+    """Check LLM service configuration."""
     load_dotenv()
     
-    # Собираем конфигурацию из переменных окружения
     config = {
         "api_key": os.environ.get("AZURE_OPENAI_API_KEY"),
         "endpoint": os.environ.get("AZURE_OPENAI_ENDPOINT"),
@@ -26,26 +24,25 @@ def llm_config(test):
         "model_name": os.environ.get("AZURE_OPENAI_MODEL_NAME")
     }
     
-    click.echo("Текущая конфигурация Azure OpenAI:")
-    # Не показываем API ключ полностью
+    click.echo("Current Azure OpenAI configuration:")
     if config["api_key"]:
         config["api_key"] = f"{config['api_key'][:5]}...{config['api_key'][-5:]}"
     click.echo(json.dumps(config, indent=2, ensure_ascii=False))
     
     if test:
-        click.echo("\nПроверяем соединение с Azure OpenAI...")
+        click.echo("\nTesting connection to Azure OpenAI...")
         try:
             service = create_llm_service()
             
-            test_query = "Ответь коротко 'OK' если ты работаешь."
-            click.echo(f"Запрос: {test_query}")
+            test_query = "Respond with a simple 'OK' if you are working."
+            click.echo(f"Query: {test_query}")
             
             actions = service.generate_actions(test_query)
             
-            click.echo(f"\nПолучено {len(actions)} действий от LLM")
+            click.echo(f"\nReceived {len(actions)} actions from LLM")
             for i, action in enumerate(actions, 1):
-                click.echo(f"Действие {i}: {action.get('type')} - {action.get('description')}")
+                click.echo(f"Action {i}: {action.get('type')} - {action.get('description')}")
             
-            click.echo("\n✅ Соединение успешно установлено!")
+            click.echo("\n✅ Connection successfully established!")
         except LLMServiceError as e:
-            click.echo(f"\n❌ Ошибка при подключении к LLM сервису: {e}", err=True)
+            click.echo(f"\n❌ Error connecting to LLM service: {e}", err=True)

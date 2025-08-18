@@ -1,34 +1,34 @@
-"""Схема для планов действий."""
+"""Schema for action plans."""
 
-# Пример структуры плана
+# Example plan structure
 PLAN_SCHEMA = {
     "type": "object",
     "properties": {
         "query": {
             "type": "string",
-            "description": "Исходный запрос на естественном языке"
+            "description": "Original natural language query"
         },
         "actions": {
             "type": "array",
-            "description": "Список действий для выполнения",
+            "description": "List of actions to execute",
             "items": {
                 "type": "object",
                 "properties": {
                     "type": {
                         "type": "string",
-                        "description": "Тип действия (read, write, modify, etc.)"
+                        "description": "Action type (read, write, modify, etc.)"
                     },
                     "path": {
                         "type": "string",
-                        "description": "Путь к файлу или директории"
+                        "description": "Path to file or directory"
                     },
                     "content": {
                         "type": "string",
-                        "description": "Содержимое для записи (для write/modify)"
+                        "description": "Content to write (for write/modify actions)"
                     },
                     "description": {
                         "type": "string",
-                        "description": "Описание действия"
+                        "description": "Description of the action"
                     }
                 },
                 "required": ["type", "path", "description"]
@@ -40,13 +40,13 @@ PLAN_SCHEMA = {
 
 
 def validate_plan(plan):
-    """Валидирует план на соответствие схеме.
+    """Validates a plan against the schema.
     
     Args:
-        plan (dict): План для валидации.
+        plan (dict): Plan to validate.
         
     Returns:
-        bool: Соответствует ли план схеме.
+        bool: Whether the plan conforms to the schema.
     """
-    # TODO: Реализовать проверку плана на соответствие схеме
+    # TODO: Implement plan validation against the schema
     return True

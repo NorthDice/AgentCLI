@@ -1,12 +1,7 @@
-#!/usr/bin/env python3
-"""
-Пример использования Azure OpenAI LLM сервиса.
-"""
 import os
 import sys
 from pathlib import Path
 
-# Добавляем родительский каталог в путь для импорта
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
@@ -19,50 +14,50 @@ from agentcli.core import (
 
 def main():
     """
-    Демонстрирует использование Azure OpenAI LLM сервиса.
+    Demonstrates the usage of the Azure OpenAI LLM service.
     """
     try:
-        # Загружаем переменные окружения из .env файла
+        # Load environment variables from .env file
         load_dotenv()
         
-        # Выводим информацию о конфигурации
-        print("Параметры Azure OpenAI:")
+        # Print configuration info
+        print("Azure OpenAI Parameters:")
         print(f"- Endpoint: {os.getenv('AZURE_OPENAI_ENDPOINT')}")
         print(f"- Deployment: {os.getenv('AZURE_OPENAI_DEPLOYMENT')}")
         print(f"- API Version: {os.getenv('AZURE_OPENAI_API_VERSION', '2023-05-15')}")
         print(f"- Model Name: {os.getenv('AZURE_OPENAI_MODEL_NAME', 'gpt-4')}")
         
-        # Создаем LLM сервис
-        print("\nСоздаем Azure OpenAI LLM сервис...")
+        # Create the LLM service
+        print("\nCreating Azure OpenAI LLM service...")
         llm_service = create_llm_service()
-        print(f"Тип сервиса: {type(llm_service).__name__}")
+        print(f"Service type: {type(llm_service).__name__}")
         
-        # Генерируем план действий
-        prompt = "Создай простую функцию для расчета факториала на Python"
-        print(f"\nОтправляем запрос: {prompt}")
+        # Generate an action plan
+        prompt = "Create a simple Python function to calculate factorial"
+        print(f"\nSending prompt: {prompt}")
         
         actions = llm_service.generate_actions(prompt)
         
-        print(f"\nПолучен план действий ({len(actions)} действий):")
+        print(f"\nReceived action plan ({len(actions)} actions):")
         
         if len(actions) == 0:
-            print("Не удалось получить действия от LLM.")
+            print("Failed to get actions from the LLM.")
         
         for i, action in enumerate(actions, 1):
-            print(f"\nДействие {i}:")
-            print(f"Тип: {action.get('type')}")
-            print(f"Путь: {action.get('path')}")
-            print(f"Описание: {action.get('description')}")
+            print(f"\nAction {i}:")
+            print(f"Type: {action.get('type')}")
+            print(f"Path: {action.get('path')}")
+            print(f"Description: {action.get('description')}")
             if 'content' in action:
-                print("Содержимое:")
+                print("Content:")
                 print("-" * 40)
                 print(action.get('content'))
                 print("-" * 40)
         
     except LLMServiceError as e:
-        print(f"Ошибка LLM сервиса: {e}")
+        print(f"LLM service error: {e}")
     except Exception as e:
-        print(f"Неизвестная ошибка: {e}")
+        print(f"Unknown error: {e}")
 
 
 if __name__ == "__main__":

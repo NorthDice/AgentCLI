@@ -1,4 +1,4 @@
-"""Команда status для отображения статуса."""
+"""Status command to display current state."""
 
 import os
 import json
@@ -10,14 +10,14 @@ from rich.table import Table
 
 
 @click.command()
-@click.option("--logs", "-l", is_flag=True, help="Показать журнал изменений")
-@click.option("--plans", "-p", is_flag=True, help="Показать доступные планы")
+@click.option("--logs", "-l", is_flag=True, help="Show the change log")
+@click.option("--plans", "-p", is_flag=True, help="Show available plans")
 def status(logs, plans):
-    """Показывает текущий статус и историю изменений."""
+    """Displays the current status and change history."""
     console = Console()
     
     if not logs and not plans:
-        # По умолчанию показываем и логи, и планы
+        # By default show both logs and plans
         logs = True
         plans = True
     
@@ -29,26 +29,26 @@ def status(logs, plans):
 
 
 def _show_plans(console):
-    """Показывает доступные планы."""
+    """Shows available plans."""
     plans_dir = os.path.join(os.getcwd(), "plans")
     
     if not os.path.exists(plans_dir):
-        console.print("[yellow]Директория планов не найдена.[/]")
+        console.print("[yellow]Plans directory not found.[/]")
         return
     
-    # Ищем все планы
+    # Find all plan files
     plan_files = glob.glob(os.path.join(plans_dir, "*.json"))
     
     if not plan_files:
-        console.print("[yellow]Планы не найдены.[/]")
+        console.print("[yellow]No plans found.[/]")
         return
     
-    # Создаем таблицу планов
-    table = Table(title="Доступные планы")
+    # Build table of plans
+    table = Table(title="Available Plans")
     table.add_column("ID", style="cyan")
-    table.add_column("Запрос", style="green")
-    table.add_column("Дата создания", style="magenta")
-    table.add_column("Действия", justify="right")
+    table.add_column("Query", style="green")
+    table.add_column("Created At", style="magenta")
+    table.add_column("Actions", justify="right")
     
     for plan_file in sorted(plan_files, key=os.path.getmtime, reverse=True):
         try:
@@ -56,11 +56,11 @@ def _show_plans(console):
                 plan = json.load(f)
             
             plan_id = plan.get("id", os.path.basename(plan_file))
-            query = plan.get("query", "Не указан")
-            timestamp = plan.get("timestamp", "Неизвестно")
+            query = plan.get("query", "Not specified")
+            timestamp = plan.get("timestamp", "Unknown")
             actions_count = len(plan.get("actions", []))
             
-            # Преобразуем timestamp если возможно
+            # Convert timestamp if possible
             try:
                 dt = datetime.fromisoformat(timestamp)
                 timestamp = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -76,7 +76,7 @@ def _show_plans(console):
         except Exception as e:
             table.add_row(
                 os.path.basename(plan_file),
-                f"[red]Ошибка чтения плана: {str(e)}[/]",
+                f"[red]Error reading plan: {str(e)}[/]",
                 "",
                 ""
             )
@@ -85,26 +85,26 @@ def _show_plans(console):
 
 
 def _show_logs(console):
-    """Показывает журнал изменений."""
+    """Shows the change log."""
     logs_dir = os.path.join(os.getcwd(), ".agentcli/logs")
     
     if not os.path.exists(logs_dir):
-        console.print("[yellow]Журнал изменений пуст.[/]")
+        console.print("[yellow]Change log is empty.[/]")
         return
     
-    # Ищем все логи
+    # Find all log files
     log_files = glob.glob(os.path.join(logs_dir, "*.json"))
     
     if not log_files:
-        console.print("[yellow]Журнал изменений пуст.[/]")
+        console.print("[yellow]Change log is empty.[/]")
         return
     
-    # Создаем таблицу логов
-    table = Table(title="История изменений")
+    # Build table of logs
+    table = Table(title="Change History")
     table.add_column("ID", style="cyan")
-    table.add_column("Действие", style="green")
-    table.add_column("Описание", style="blue")
-    table.add_column("Дата", style="magenta")
+    table.add_column("Action", style="green")
+    table.add_column("Description", style="blue")
+    table.add_column("Date", style="magenta")
     
     for log_file in sorted(log_files, key=os.path.getmtime, reverse=True):
         try:
@@ -112,11 +112,11 @@ def _show_logs(console):
                 log = json.load(f)
             
             log_id = log.get("id", os.path.basename(log_file))
-            action = log.get("action", "Неизвестно")
-            description = log.get("description", "Нет описания")
-            timestamp = log.get("timestamp", "Неизвестно")
+            action = log.get("action", "Unknown")
+            description = log.get("description", "No description")
+            timestamp = log.get("timestamp", "Unknown")
             
-            # Преобразуем timestamp если возможно
+            # Convert timestamp if possible
             try:
                 dt = datetime.fromisoformat(timestamp)
                 timestamp = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -132,8 +132,8 @@ def _show_logs(console):
         except Exception as e:
             table.add_row(
                 os.path.basename(log_file),
-                "[red]Ошибка[/]",
-                f"[red]Ошибка чтения лога: {str(e)}[/]",
+                "[red]Error[/]",
+                f"[red]Error reading log: {str(e)}[/]",
                 ""
             )
     

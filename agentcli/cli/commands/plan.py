@@ -1,4 +1,4 @@
-"""Команда plan для создания плана действий."""
+"""Plan command for creating an action plan."""
 
 import json
 import os
@@ -16,73 +16,73 @@ from agentcli.utils.logging import logger
 
 @click.command()
 @click.argument("query", required=True)
-@click.option("--output", "-o", help="Путь для сохранения плана (YAML/JSON)")
+@click.option("--output", "-o", help="Path to save the plan (YAML/JSON)")
 @click.option("--format", "-f", type=click.Choice(["json", "yaml"]), default="json",
-              help="Формат вывода плана (по умолчанию: json)")
+              help="Output format of the plan (default: json)")
 def plan(query, output, format):
-    """Создает план действий на основе запроса.
+    """Creates an action plan based on a query.
     
-    QUERY - запрос на естественном языке для создания плана.
+    QUERY - natural language query for creating a plan.
     """
     console = Console()
     
     try:
-        logger.info(f"Запуск команды plan с параметрами: query='{query}', output='{output}', format='{format}'")
+        logger.info(f"Running 'plan' command with parameters: query='{query}', output='{output}', format='{format}'")
         
-        # Отображаем процесс
-        with console.status("Создание плана..."):
-            # Создаем планировщик и генерируем план
+        # Display process
+        with console.status("Creating plan..."):
+            # Create planner and generate plan
             planner = Planner()
             
             try:
                 result_plan = planner.create_plan(query)
             except LLMServiceError as e:
-                logger.error(f"Ошибка LLM сервиса: {str(e)}")
-                console.print(f"\n[bold red]✗[/] Ошибка при обращении к LLM сервису: {str(e)}")
+                logger.error(f"LLM service error: {str(e)}")
+                console.print(f"\n[bold red]✗[/] Error while calling LLM service: {str(e)}")
                 return 1
             
-            # Сохраняем план в файл
+            # Save plan to file
             try:
                 if output:
                     if not output.lower().endswith(f".{format}"):
                         output = f"{output}.{format}"
-                    # Если путь указан явно, используем его
+                    # Save to specified path
                     output = planner.save_plan(result_plan, output)
                 else:
-                    # По умолчанию сохраняем в директорию plans
+                    # By default save into 'plans' directory
                     os.makedirs("plans", exist_ok=True)
                     output = planner.save_plan(result_plan)
             except Exception as e:
-                logger.error(f"Ошибка при сохранении плана: {str(e)}")
-                console.print(f"\n[bold red]✗[/] Ошибка при сохранении плана: {str(e)}")
+                logger.error(f"Error while saving plan: {str(e)}")
+                console.print(f"\n[bold red]✗[/] Error while saving plan: {str(e)}")
                 
-                # В режиме отладки показываем стектрейс
+                # Show traceback in debug mode
                 if os.environ.get("AGENTCLI_LOG_LEVEL") == "DEBUG":
-                    console.print("\n[bold red]Стектрейс:[/]")
+                    console.print("\n[bold red]Traceback:[/]")
                     console.print(traceback.format_exc())
                 return 1
     
-        # Отображаем результат
-        console.print(f"\n[bold green]✓[/] План создан и сохранен в: [bold]{output}[/]")
+        # Show result
+        console.print(f"\n[bold green]✓[/] Plan created and saved to: [bold]{output}[/]")
         
-        # Отображаем действия плана
-        console.print("\n[bold]Действия плана:[/]")
+        # Show plan actions
+        console.print("\n[bold]Plan actions:[/]")
         for i, action in enumerate(result_plan["actions"], 1):
             action_type = action.get("type", "unknown")
-            description = action.get("description", "Нет описания")
+            description = action.get("description", "No description")
             path = action.get("path", "")
             
-            # Создаем панель с описанием действия
+            # Create panel with action description
             action_panel = Panel(
-                f"[bold]Тип:[/] {action_type}\n"
-                f"[bold]Путь:[/] {path}\n"
-                f"[bold]Описание:[/] {description}",
-                title=f"Действие #{i}",
+                f"[bold]Type:[/] {action_type}\n"
+                f"[bold]Path:[/] {path}\n"
+                f"[bold]Description:[/] {description}",
+                title=f"Action #{i}",
                 expand=False
             )
             console.print(action_panel)
             
-            # Если есть содержимое, отображаем его с подсветкой синтаксиса
+            # Show content with syntax highlighting if present
             if action.get("content"):
                 ext = os.path.splitext(path)[1] if path else ".txt"
                 syntax = Syntax(
@@ -96,21 +96,21 @@ def plan(query, output, format):
         return 0
     
     except ValidationError as e:
-        logger.error(f"Ошибка валидации: {str(e)}")
-        console.print(f"\n[bold red]✗[/] Ошибка валидации: {str(e)}")
+        logger.error(f"Validation error: {str(e)}")
+        console.print(f"\n[bold red]✗[/] Validation error: {str(e)}")
         return 1
         
     except PlanError as e:
-        logger.error(f"Ошибка при создании плана: {str(e)}")
-        console.print(f"\n[bold red]✗[/] Ошибка при создании плана: {str(e)}")
+        logger.error(f"Error while creating plan: {str(e)}")
+        console.print(f"\n[bold red]✗[/] Error while creating plan: {str(e)}")
         return 1
         
     except Exception as e:
-        logger.exception(f"Неожиданная ошибка: {str(e)}")
-        console.print(f"\n[bold red]✗[/] Произошла ошибка: {str(e)}")
+        logger.exception(f"Unexpected error: {str(e)}")
+        console.print(f"\n[bold red]✗[/] Unexpected error: {str(e)}")
         
-        # В режиме отладки показываем стектрейс
+        # Show traceback in debug mode
         if os.environ.get("AGENTCLI_LOG_LEVEL") == "DEBUG":
-            console.print("\n[bold red]Стектрейс:[/]")
+            console.print("\n[bold red]Traceback:[/]")
             console.print(traceback.format_exc())
-        return 1
+        return 1 

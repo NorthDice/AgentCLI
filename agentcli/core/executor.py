@@ -81,7 +81,11 @@ class Executor:
         try:
             if action_type == "create":
                 # Создание файла
-                if path and content:
+                if path and content is not None:  # content может быть пустой строкой
+                    # Если путь не абсолютный, используем текущую директорию
+                    if not os.path.isabs(path):
+                        path = os.path.join(os.getcwd(), path)
+                        
                     write_file(path, content)
                     self.logger.log_action("create", f"Создан файл: {path}", {"path": path})
                     result["success"] = True
@@ -91,7 +95,11 @@ class Executor:
             
             elif action_type == "modify":
                 # Изменение файла
-                if path and content:
+                if path and content is not None:  # content может быть пустой строкой
+                    # Если путь не абсолютный, используем текущую директорию
+                    if not os.path.isabs(path):
+                        path = os.path.join(os.getcwd(), path)
+                    
                     # Сохраняем предыдущее содержимое для отката
                     old_content = read_file(path) if os.path.exists(path) else ""
                     
@@ -111,22 +119,29 @@ class Executor:
             
             elif action_type == "delete":
                 # Удаление файла
-                if path and os.path.exists(path):
-                    # Сохраняем содержимое для возможности отката
-                    old_content = read_file(path)
-                    
-                    # Удаляем файл
-                    os.remove(path)
-                    
-                    self.logger.log_action("delete", f"Удален файл: {path}", {
-                        "path": path,
-                        "content": old_content
-                    })
-                    
-                    result["success"] = True
-                    result["message"] = f"Удален файл: {path}"
+                if path:
+                    # Если путь не абсолютный, используем текущую директорию
+                    if not os.path.isabs(path):
+                        path = os.path.join(os.getcwd(), path)
+                        
+                    if os.path.exists(path):
+                        # Сохраняем содержимое для возможности отката
+                        old_content = read_file(path)
+                        
+                        # Удаляем файл
+                        os.remove(path)
+                        
+                        self.logger.log_action("delete", f"Удален файл: {path}", {
+                            "path": path,
+                            "content": old_content
+                        })
+                        
+                        result["success"] = True
+                        result["message"] = f"Удален файл: {path}"
+                    else:
+                        result["message"] = f"Файл не существует: {path}"
                 else:
-                    result["message"] = f"Файл не существует или путь не указан: {path}"
+                    result["message"] = "Путь к файлу не указан"
             
             elif action_type == "info":
                 # Информационное действие, не требующее изменений
@@ -153,5 +168,107 @@ class Executor:
         Returns:
             dict: Результат отката.
         """
-        # TODO: Реализовать откат действий
-        return {"success": False, "message": "Функция отката пока не реализована"}
+        result = {
+            "success": False,
+            "actions_rolled_back": [],
+            "errors": [],
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Получаем логи действий в обратном порядке (от новых к старым)
+        log_dir = self.logger.log_dir
+        if not os.path.exists(log_dir):
+            result["errors"].append("Журнал действий не найден")
+            return result
+        
+        log_files = sorted(
+            [f for f in os.listdir(log_dir) if f.endswith(".json")],
+            key=lambda f: os.path.getmtime(os.path.join(log_dir, f)),
+            reverse=True
+        )
+        
+        # Определяем количество логов для отката
+        logs_to_rollback = min(steps, len(log_files))
+        if logs_to_rollback == 0:
+            result["errors"].append("Нет действий для отката")
+            return result
+        
+        rolled_back = 0
+        for i in range(logs_to_rollback):
+            if i >= len(log_files):
+                break
+                
+            log_path = os.path.join(log_dir, log_files[i])
+            
+            try:
+                # Загружаем лог
+                with open(log_path, 'r') as f:
+                    log = json.load(f)
+                
+                # Откатываем действие в зависимости от его типа
+                action_type = log.get("action")
+                details = log.get("details", {})
+                
+                if action_type == "create":
+                    # Для созданного файла - удаляем его
+                    path = details.get("path")
+                    if path and os.path.exists(path):
+                        os.remove(path)
+                        result["actions_rolled_back"].append({
+                            "type": "delete",
+                            "path": path,
+                            "description": f"Удален файл, созданный действием: {log.get('description')}"
+                        })
+                        rolled_back += 1
+                    else:
+                        result["errors"].append(f"Файл не найден: {path}")
+                
+                elif action_type == "modify":
+                    # Для измененного файла - возвращаем предыдущее содержимое
+                    path = details.get("path")
+                    old_content = details.get("old_content")
+                    
+                    if path and old_content is not None:
+                        write_file(path, old_content)
+                        result["actions_rolled_back"].append({
+                            "type": "restore",
+                            "path": path,
+                            "description": f"Восстановлено предыдущее состояние файла: {path}"
+                        })
+                        rolled_back += 1
+                    else:
+                        result["errors"].append(f"Недостаточно данных для отката изменения файла: {path}")
+                
+                elif action_type == "delete":
+                    # Для удаленного файла - восстанавливаем его
+                    path = details.get("path")
+                    content = details.get("content")
+                    
+                    if path and content is not None:
+                        write_file(path, content)
+                        result["actions_rolled_back"].append({
+                            "type": "restore",
+                            "path": path,
+                            "description": f"Восстановлен удаленный файл: {path}"
+                        })
+                        rolled_back += 1
+                    else:
+                        result["errors"].append(f"Недостаточно данных для восстановления файла: {path}")
+                
+                # Логируем откат действия
+                self.logger.log_action(
+                    "rollback",
+                    f"Откат действия: {log.get('description', 'Неизвестное действие')}",
+                    {"original_action": log}
+                )
+                
+                # Удаляем лог откаченного действия
+                os.remove(log_path)
+                
+            except Exception as e:
+                result["errors"].append(f"Ошибка отката действия: {str(e)}")
+        
+        # Обновляем результат
+        result["success"] = rolled_back > 0
+        
+        return result

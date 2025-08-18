@@ -6,8 +6,9 @@ from rich.console import Console
 from rich.syntax import Syntax
 from rich.panel import Panel
 from rich.text import Text
+from rich.markup import escape
 
-from agentcli.core.search import search_files
+from agentcli.core.search import search_files, format_search_results
 
 
 @click.command()
@@ -16,10 +17,16 @@ from agentcli.core.search import search_files
 @click.option("--file-pattern", "-f", default="*", help="Шаблон для фильтрации файлов (например, '*.py')")
 @click.option("--max-results", "-m", default=100, help="Максимальное количество результатов")
 @click.option("--context", "-c", default=1, help="Количество строк контекста до и после совпадения")
-def search(query, path, file_pattern, max_results, context):
+@click.option("--regex/--no-regex", default=False, help="Использовать регулярные выражения для поиска")
+@click.option("--case-sensitive/--ignore-case", default=False, help="Учитывать регистр при поиске")
+@click.option("--ignore-gitignore/--use-gitignore", default=False, help="Игнорировать правила .gitignore")
+@click.option("--format", "-fmt", type=click.Choice(['normal', 'compact', 'links']), default='normal', 
+              help="Формат вывода результатов")
+def search(query, path, file_pattern, max_results, context, regex, case_sensitive, 
+           ignore_gitignore, format):
     """Выполняет поиск по файлам проекта.
     
-    QUERY - строка для поиска.
+    QUERY - строка или регулярное выражение для поиска.
     """
     console = Console()
     
@@ -29,19 +36,37 @@ def search(query, path, file_pattern, max_results, context):
     else:
         path = os.path.abspath(path)
     
-    with console.status(f"Поиск '{query}' в {path}..."):
-        # Выполняем поиск
-        results = search_files(query, path, file_pattern)
+    # Определяем что искать
+    search_type = "регулярному выражению" if regex else "строке"
+    case_info = "с учетом регистра" if case_sensitive else "без учета регистра"
+    gitignore_info = "" if not ignore_gitignore else " (игнорируя .gitignore)"
+    
+    with console.status(f"Поиск по {search_type} '{query}' {case_info} в {path}{gitignore_info}..."):
+        # Выполняем поиск с новыми параметрами
+        results = search_files(
+            query=query,
+            path=path,
+            file_pattern=file_pattern,
+            is_regex=regex,
+            use_gitignore=not ignore_gitignore,
+            case_sensitive=case_sensitive
+        )
     
     # Отображаем результаты
     if not results:
-        console.print(f"[yellow]По запросу '[bold]{query}[/]' ничего не найдено.[/]")
+        console.print(f"[yellow]По запросу '[bold]{escape(query)}[/]' ничего не найдено.[/]")
         return
     
     total_matches = sum(len(result["matches"]) for result in results)
     console.print(f"\n[bold green]Найдено:[/] {total_matches} совпадений в {len(results)} файлах")
     
-    # Ограничиваем количество результатов
+    # Если выбран формат links или compact, используем форматирование из search.py
+    if format in ['links', 'compact']:
+        formatted_results = format_search_results(results, format, os.getcwd())
+        console.print(formatted_results)
+        return
+    
+    # Иначе используем rich форматирование для более красивого вывода
     result_count = 0
     for file_result in results:
         file_path = file_result["file"]
@@ -64,6 +89,7 @@ def search(query, path, file_pattern, max_results, context):
             line_num = match["line_num"]
             line = match["line"]
             match_index = match["match_index"]
+            match_length = match.get("match_length", len(query))
             
             # Определяем строки для контекста
             start_line = max(1, line_num - context)
@@ -76,8 +102,7 @@ def search(query, path, file_pattern, max_results, context):
             if start_line > end_line:
                 continue
             
-            # Создаем текст с подсветкой совпадения
-            match_length = len(query)
+            # Текст с подсветкой совпадения уже готов
             
             # Отображаем контекст и строку с совпадением
             if context > 0:

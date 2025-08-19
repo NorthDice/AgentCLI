@@ -7,7 +7,10 @@ from rich.syntax import Syntax
 from rich.text import Text
 from rich.markup import escape
 
-from agentcli.core.search import search_files, format_search_results
+from agentcli.core.search import (
+    perform_semantic_search, format_semantic_results,
+    search_files, format_search_results
+)
 
 
 @click.command()
@@ -19,6 +22,9 @@ from agentcli.core.search import search_files, format_search_results
 @click.option("--regex/--no-regex", default=False, help="Use regular expressions for search")
 @click.option("--case-sensitive/--ignore-case", default=False, help="Case-sensitive search")
 @click.option("--ignore-gitignore/--use-gitignore", default=False, help="Ignore .gitignore rules")
+@click.option("--semantic/--literal", default=False, help="Use semantic search instead of literal text matching")
+@click.option("--semantic-results", "-sr", default=3, help="Number of semantic search results to display")
+@click.option("--rebuild-index", is_flag=True, help="Rebuild the search index before searching")
 @click.option(
     "--format", "-fmt",
     type=click.Choice(["normal", "compact", "links"]),
@@ -26,10 +32,13 @@ from agentcli.core.search import search_files, format_search_results
     help="Output format of results"
 )
 def search(query, path, file_pattern, max_results, context, regex, case_sensitive,
-           ignore_gitignore, format):
+           ignore_gitignore, semantic, semantic_results, rebuild_index, format):
     """Search through project files.
 
     QUERY - a string or regular expression to search for.
+    
+    Use --semantic flag to perform semantic search that understands the meaning of your query,
+    not just literal text matches. Use --semantic-results to control how many semantic results to show.
     """
     console = Console()
 
@@ -39,7 +48,20 @@ def search(query, path, file_pattern, max_results, context, regex, case_sensitiv
     else:
         path = os.path.abspath(path)
 
-    # Info message
+    # For semantic search
+    if semantic:
+        with console.status(f"Performing semantic search for '{query}' in {path}..."):
+            search_results = perform_semantic_search(
+                query=query, 
+                path=path, 
+                top_k=max_results,
+                rebuild_index=rebuild_index
+            )
+            
+        format_semantic_results(search_results, console, context, max_results=semantic_results)
+        return
+
+    # For regular text search
     search_type = "regular expression" if regex else "string"
     case_info = "case-sensitive" if case_sensitive else "case-insensitive"
     gitignore_info = "" if not ignore_gitignore else " (ignoring .gitignore)"

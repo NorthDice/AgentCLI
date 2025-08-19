@@ -1,4 +1,4 @@
-"""Основные компоненты для AgentCLI."""
+"""Core components for AgentCLI."""
 
 from .llm_service import LLMService
 from .azure_llm import AzureOpenAIService, create_llm_service
@@ -12,4 +12,5 @@ from .file_ops import (
     insert_into_file,
     replace_in_file
 )
-from .search import search_files
+# Import search functionality
+from . import search

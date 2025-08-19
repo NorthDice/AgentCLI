@@ -4,5 +4,15 @@ rich>=10.0.0
 # Для красивого вывода в консоли
 # Для работы с JSON/YAML
 jsonschema>=4.0.0
-# Для базовой LLM интеграции (заглушка)
+# Для базовой LLM интеграции
 requests>=2.0.0
+openai>=1.0.0
+
+# Для RAG системы поиска
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+tree-sitter>=0.20.0
+pygments>=2.10.0
+
+# Для работы с файлами проекта
+gitignore-parser>=0.1.0

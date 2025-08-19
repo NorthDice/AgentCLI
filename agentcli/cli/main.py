@@ -13,6 +13,7 @@ from agentcli.cli.commands.explain import explain
 from agentcli.cli.commands.gen import gen
 from agentcli.cli.commands.status import status
 from agentcli.cli.commands.llm_config import llm_config
+from agentcli.cli.commands.index import index, add_commands_to_cli
 
 @click.group()
 @click.version_option(version=__version__)
@@ -34,8 +35,6 @@ def cli(debug, log_file):
 
 
 
-
-# Регистрация команд
 cli.add_command(plan)
 cli.add_command(apply)
 cli.add_command(rollback)
@@ -44,6 +43,9 @@ cli.add_command(explain)
 cli.add_command(gen)
 cli.add_command(status)
 cli.add_command(llm_config)
+cli.add_command(index) 
+
+add_commands_to_cli(cli)
 
 
 if __name__ == "__main__":

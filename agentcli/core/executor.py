@@ -319,8 +319,9 @@ class Executor:
             result["errors"].append("Action log not found")
             return result
         
+        # Only consider regular .json logs, not ones that have already been rolled back
         log_files = sorted(
-            [f for f in os.listdir(log_dir) if f.endswith(".json")],
+            [f for f in os.listdir(log_dir) if f.endswith(".json") and not f.endswith("_rolled_back.json")],
             key=lambda f: os.path.getmtime(os.path.join(log_dir, f)),
             reverse=True
         )
@@ -393,10 +394,18 @@ class Executor:
                         rolled_back += 1
                     else:
                         result["errors"].append(f"Not enough data to restore deleted file: {path}")
+                        
+                # Log the rollback action itself
+                self.logger.log_action("rollback", f"Rolled back action: {action_type} - {log.get('description')}", {
+                    "original_action_id": log.get("id"),
+                    "original_action_type": action_type,
+                    "path": details.get("path")
+                })
                 
-                # Delete log of rolled back action without creating new log entries
-                # This prevents rollback actions from being logged and simplifies multi-level rollbacks
-                os.remove(log_path)
+                # Mark this log as "rolled_back" by renaming it 
+                # This allows us to keep track of what's been rolled back
+                rolled_back_path = log_path.replace(".json", "_rolled_back.json")
+                os.rename(log_path, rolled_back_path)
                 
             except Exception as e:
                 error_msg = f"Error rolling back action: {str(e)}"

@@ -328,7 +328,8 @@ class Executor:
         # Determine number of logs to rollback
         logs_to_rollback = min(steps, len(log_files))
         if logs_to_rollback == 0:
-            result["errors"].append("No actions to roll back")
+            result["errors"].append("No actions to roll back - action log is empty")
+            app_logger.warning("Rollback attempted but no actions found in the log")
             return result
         
         rolled_back = 0
@@ -393,20 +394,20 @@ class Executor:
                     else:
                         result["errors"].append(f"Not enough data to restore deleted file: {path}")
                 
-                # Log rollback action
-                self.logger.log_action(
-                    "rollback",
-                    f"Rollback of action: {log.get('description', 'Unknown action')}",
-                    {"original_action": log}
-                )
-                
-                # Delete log of rolled back action
+                # Delete log of rolled back action without creating new log entries
+                # This prevents rollback actions from being logged and simplifies multi-level rollbacks
                 os.remove(log_path)
                 
             except Exception as e:
-                result["errors"].append(f"Error rolling back action: {str(e)}")
+                error_msg = f"Error rolling back action: {str(e)}"
+                result["errors"].append(error_msg)
+                app_logger.error(error_msg)
         
         # Update result
         result["success"] = rolled_back > 0
+        
+        # Log any errors that occurred
+        if result["errors"]:
+            app_logger.error(f"Rollback completed with {len(result['errors'])} errors: {result['errors']}")
         
         return result

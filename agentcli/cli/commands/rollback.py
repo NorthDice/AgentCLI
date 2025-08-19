@@ -52,6 +52,14 @@ def rollback(steps, yes):
             console.print(panel)
     else:
         console.print("[bold red]✗[/] Error during rollback")
+        
+        # Display detailed errors
+        if result["errors"]:
+            console.print("[bold red]Errors:[/]")
+            for i, error in enumerate(result["errors"], 1):
+                console.print(f"  {i}. {error}")
+        else:
+            console.print("  No detailed error information available.")
     
     # Display errors if any
     if result.get("errors"):

@@ -5,7 +5,7 @@ import click
 from pathlib import Path
 
 from agentcli.core import create_llm_service, LLMServiceError
-from agentcli.core.file_ops import write_file
+from agentcli.core.file_ops import write_file, read_file
 from agentcli.core.logger import Logger
 from agentcli.utils.logging import logger
 
@@ -26,7 +26,27 @@ def gen(description, output, dry_run):
         
         action_logger = Logger()
         
-        query = f"Generate code for: {description}. Return only code without surrounding comments."
+        # Check if output file exists and modify the query accordingly
+        current_content = ""
+        if output and os.path.exists(output):
+            try:
+                current_content = read_file(output)
+                query = f"""
+                I have an existing file with the following content:
+                
+                ```
+                {current_content}
+                ```
+                
+                Task: {description}
+                
+                Please modify or extend this code to fulfill the task. Return only the complete updated code without any surrounding comments or explanations.
+                """
+            except Exception as e:
+                logger.warning(f"Could not read existing file {output}: {e}")
+                query = f"Generate code for: {description}. Return only code without surrounding comments."
+        else:
+            query = f"Generate code for: {description}. Return only code without surrounding comments."
         
         actions = llm_service.generate_actions(query)
         
@@ -34,7 +54,7 @@ def gen(description, output, dry_run):
             click.echo("Failed to generate code.", err=True)
             return
         
-        code_action = next((a for a in actions if a.get('type') in ['create_file', 'info']), None)
+        code_action = next((a for a in actions if a.get('type') in ['create_file', 'modify', 'info']), None)
         
         if not code_action:
             click.echo("Failed to extract code from LLM response.", err=True)
@@ -73,7 +93,15 @@ def gen(description, output, dry_run):
                 
                 write_file(output, code)
                 
-                action_logger.log_action("create", f"Created file: {output}", {"path": output})
+                # Log as modify if file existed, create if new
+                if current_content:
+                    action_logger.log_action("modify", f"Modified file: {output}", {
+                        "path": output,
+                        "old_content": current_content,
+                        "new_content": code
+                    })
+                else:
+                    action_logger.log_action("create", f"Created file: {output}", {"path": output})
                 
                 click.echo(f"✅ Code successfully generated and saved to file: {output}")
             except Exception as e:

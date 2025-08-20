@@ -123,6 +123,49 @@ class AzureOpenAIService(LLMService):
             logger.debug(f"LLM response: {actions_text}")
             raise LLMServiceError(f"Failed to parse JSON actions: {str(e)}")
     
+    def complete(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """Generate a completion for the given prompt.
+        
+        Args:
+            prompt (str): User prompt.
+            system_prompt (Optional[str]): Optional system prompt. If not provided, uses default.
+            
+        Returns:
+            str: Generated completion.
+            
+        Raises:
+            LLMServiceError: When there's an error communicating with Azure OpenAI API.
+        """
+        try:
+            logger.debug(f"Sending completion request to Azure OpenAI")
+            
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+            
+            response = self.client.chat.completions.create(
+                model=self.deployment,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
+            )
+            
+            if not response or not response.choices or len(response.choices) == 0:
+                raise LLMServiceError("Empty response from Azure OpenAI API")
+            
+            message_content = response.choices[0].message.content
+            
+            if not message_content:
+                raise LLMServiceError("Empty message content from Azure OpenAI API")
+            
+            logger.debug(f"Received completion response")
+            return message_content
+            
+        except Exception as e:
+            logger.error(f"Error generating completion through Azure OpenAI: {str(e)}")
+            raise LLMServiceError(f"Failed to get completion from Azure OpenAI API: {str(e)}")
+    
     def generate_actions(self, query: str) -> List[Dict[str, Any]]:
         """Generate list of actions based on query using Azure OpenAI API.
         

@@ -176,10 +176,14 @@ class SemanticSearchService(SearchService):
         Returns:
             True if the file should be ignored, False otherwise.
         """
-        # Ignore hidden files and directories
+        # Ignore hidden files and directories (but not the current directory ".")
         parts = path.split(os.sep)
-        if any(part.startswith(".") for part in parts):
-            return True
+        for i, part in enumerate(parts):
+            # Skip the first part if it's "." (current directory)
+            if i == 0 and part == ".":
+                continue
+            if part.startswith("."):
+                return True
         
         # Ignore virtual environments
         if ".venv" in parts or "venv" in parts:

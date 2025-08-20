@@ -101,7 +101,10 @@ def gen(description, output, dry_run):
                         "new_content": code
                     })
                 else:
-                    action_logger.log_action("create", f"Created file: {output}", {"path": output})
+                    action_logger.log_action("create", f"Created file: {output}", {
+                        "path": output,
+                        "content": code  # Сохраняем содержимое для возможности восстановления
+                    })
                 
                 click.echo(f"✅ Code successfully generated and saved to file: {output}")
             except Exception as e:

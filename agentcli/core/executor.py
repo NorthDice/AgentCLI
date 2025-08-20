@@ -196,7 +196,10 @@ class Executor:
                 
                 app_logger.debug(f"Creating file: {path}")
                 write_file(path, content)
-                self.logger.log_action("create", f"File created: {path}", {"path": path})
+                self.logger.log_action("create", f"File created: {path}", {
+                    "path": path,
+                    "content": content  # Сохраняем содержимое для возможности восстановления
+                })
                 result["success"] = True
                 result["message"] = f"File created: {path}"
             
@@ -350,18 +353,33 @@ class Executor:
                 details = log.get("details", {})
                 
                 if action_type == "create":
-                    # For created file - delete it
+                    # For created file - delete it if exists, or restore if deleted
                     path = details.get("path")
-                    if path and os.path.exists(path):
-                        os.remove(path)
-                        result["actions_rolled_back"].append({
-                            "type": "delete",
-                            "path": path,
-                            "description": f"File deleted, created by action: {log.get('description')}"
-                        })
-                        rolled_back += 1
+                    content = details.get("content")
+                    
+                    if path:
+                        if os.path.exists(path):
+                            # File exists - delete it (normal rollback of creation)
+                            os.remove(path)
+                            result["actions_rolled_back"].append({
+                                "type": "delete",
+                                "path": path,
+                                "description": f"File deleted, created by action: {log.get('description')}"
+                            })
+                            rolled_back += 1
+                        elif content is not None:
+                            # File doesn't exist but we have content - restore it
+                            write_file(path, content)
+                            result["actions_rolled_back"].append({
+                                "type": "restore",
+                                "path": path,
+                                "description": f"Deleted file restored: {path}"
+                            })
+                            rolled_back += 1
+                        else:
+                            result["errors"].append(f"File not found and no content to restore: {path}")
                     else:
-                        result["errors"].append(f"File not found: {path}")
+                        result["errors"].append(f"No path specified in create action")
                 
                 elif action_type == "modify":
                     # For modified file - restore previous content

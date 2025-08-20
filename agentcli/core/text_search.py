@@ -44,31 +44,53 @@ def should_ignore_file(file_path: str, ignore_patterns: List[str]) -> bool:
     # Normalize the path
     norm_path = os.path.normpath(file_path).replace(os.sep, '/')
     
+    # Remove leading ./ if present
+    if norm_path.startswith('./'):
+        norm_path = norm_path[2:]
+    
+    # Check if this is a directory
+    is_directory = os.path.isdir(file_path)
+    
+    # Split path into components
+    path_components = norm_path.split('/')
+    filename = path_components[-1]
+    
     for pattern in ignore_patterns:
         # Normalize the pattern
         norm_pattern = pattern.replace(os.sep, '/')
         
-        # Strip leading and trailing slashes
-        norm_pattern = norm_pattern.strip('/')
+        # If pattern ends with /, it only applies to directories
+        if norm_pattern.endswith('/'):
+            if not is_directory:
+                continue  # Skip this pattern for files
+            # Strip the trailing / for directory matching
+            norm_pattern = norm_pattern.rstrip('/')
         
-        # Replace ** with a temporary marker
-        temp_pattern = norm_pattern.replace('**', '\x00')
+        # Strip leading slashes
+        norm_pattern = norm_pattern.lstrip('/')
         
-        # Replace * with [^/]* (any string except /)
-        temp_pattern = temp_pattern.replace('*', '[^/]*')
-        
-        # Restore ** as .*
-        temp_pattern = temp_pattern.replace('\x00', '.*')
-        
-        # Compile regex
-        try:
-            regex = re.compile(temp_pattern)
-            if regex.search(norm_path):
-                return True
-        except re.error:
-            # If regex compilation fails, fall back to fnmatch
-            if fnmatch.fnmatch(norm_path, norm_pattern):
-                return True
+        # Check for exact matches vs glob patterns
+        if '*' in norm_pattern or '?' in norm_pattern:
+            # This is a glob pattern
+            # Use fnmatch for filename patterns
+            if '/' not in norm_pattern:
+                # Pattern applies to filename only
+                if fnmatch.fnmatch(filename, norm_pattern):
+                    return True
+            else:
+                # Pattern applies to full path
+                if fnmatch.fnmatch(norm_path, norm_pattern):
+                    return True
+        else:
+            # This is an exact match pattern
+            if '/' in norm_pattern:
+                # Pattern specifies path components
+                if norm_path == norm_pattern or norm_path.startswith(norm_pattern + '/'):
+                    return True
+            else:
+                # Pattern applies to any file/directory with this name
+                if filename == norm_pattern or norm_pattern in path_components:
+                    return True
     
     return False
 

@@ -2,12 +2,65 @@
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry]
+[project]
 name = "agentcli"
 version = "0.1.0"
 description = "AgentCLI - a developer tool for autonomous code operations in Python"
-authors = ["NorthDice"]
+authors = [{name = "NorthDice", email = "northdice@example.com"}]
 readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+keywords = ["cli", "ai", "code-analysis", "developer-tools", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "python-dotenv>=1.0.0",
+    "openai>=1.0.0",
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "tree-sitter>=0.20.0",
+    "tree-sitter-python>=0.20.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/NorthDice/AgentCLI"
+Repository = "https://github.com/NorthDice/AgentCLI"
+Documentation = "https://github.com/NorthDice/AgentCLI#readme"
+"Bug Tracker" = "https://github.com/NorthDice/AgentCLI/issues"
+
+[project.scripts]
+agentcli = "agentcli.cli.main:cli"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+]
+web = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "flask>=2.3.0",
+]
+
+[tool.poetry]
 packages = [{include = "agentcli"}]
 
 [tool.poetry.dependencies]
@@ -32,9 +85,6 @@ mypy = "^1.5.0"
 fastapi = "^0.100.0"
 uvicorn = "^0.23.0"
 flask = "^2.3.0"
-
-[tool.poetry.scripts]
-agentcli = "agentcli.cli.main:cli"
 
 [tool.black]
 line-length = 88

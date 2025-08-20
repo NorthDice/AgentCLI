@@ -10,17 +10,30 @@ AI-powered developer tool for code operations, analysis, and intelligent project
 - **🔄 Safe Operations**: File operations with comprehensive rollback support
 - **📝 Code Generation**: AI-powered code generation from descriptions
 
-## Installation
+### Virtual Environment Management
+
+Always work within the virtual environment:
 
 ```bash
-# Clone and install with Poetry (recommended)
-git clone https://github.com/NorthDice/AgentCLI.git
-cd AgentCLI
-poetry install
-poetry shell
+# Activate environment
+source .venv/bin/activate
 
-# Or install directly with pip
-pip install -e .
+# Install new dependencies
+pip install package_name
+pip freeze > requirements.txt  # Update requirements
+
+# Deactivate when done
+deactivate
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feat/amazing-feature`)
+3. Follow conventional commit guidelines
+4. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+5. Push to the branch (`git push origin feat/amazing-feature`)
+6. Open a Pull Request
 ```
 
 ## Configuration

@@ -1,8 +1,13 @@
-# Python
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
 build/
 develop-eggs/
@@ -20,26 +25,29 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environment
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# IDE specific files
-.idea/
+# IDEs
 .vscode/
+.idea/
 *.swp
 *.swo
-.DS_Store
+*~
 
-# Project specific
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# AgentCLI specific
 .agentcli/logs/
-*.log
+.agentcli/search_index/
 plans/
-.coverage
-htmlcov/
-test_gitignore/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

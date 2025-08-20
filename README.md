@@ -95,7 +95,14 @@ agentcli rollback --last-plan        # entire plan
 
 # Planning and execution
 agentcli plan "Refactor auth module"
-agentcli apply plan.yaml
+
+# Apply specific plan
+agentcli apply plans/plan-id.json
+
+# Apply last created plan (convenient!)
+agentcli apply --last
+
+# Check execution status
 agentcli status
 ```
 
@@ -121,7 +128,11 @@ agentcli ask "What is the main entry point?"
 # 3. Analyze complex files
 agentcli explain src/main.py --verbose
 
-# 4. Generate new code
+# 4. Create and apply plans easily
+agentcli plan "Add logging to authentication module"
+agentcli apply --last  # No need for long plan IDs!
+
+# 5. Generate new code
 agentcli gen "Class for user management" --output user.py
 ```
 

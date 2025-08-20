@@ -11,21 +11,41 @@ from rich.prompt import Confirm
 from rich.table import Table
 
 from agentcli.core.executor import Executor
+from agentcli.core.planner import Planner
 from agentcli.core.exceptions import ValidationError
 from agentcli.utils.logging import logger
 
 
 @click.command()
-@click.argument("plan_file", type=click.Path(exists=True), required=True)
+@click.argument("plan_file", type=click.Path(exists=True), required=False)
+@click.option("--last", is_flag=True, help="Apply the last created plan")
 @click.option("--dry-run", is_flag=True, help="Show actions without executing them")
 @click.option("--skip-validation", is_flag=True, help="Skip validation before execution")
 @click.option("--yes", "-y", is_flag=True, help="Automatically confirm actions without asking")
-def apply(plan_file, dry_run, skip_validation, yes):
+def apply(plan_file, last, dry_run, skip_validation, yes):
     """Execute an action plan from file.
     
-    PLAN_FILE - path to the plan file (JSON/YAML).
+    PLAN_FILE - path to the plan file (JSON/YAML). Optional if --last is used.
     """
     console = Console()
+
+    # Determine which plan to use
+    if last:
+        if plan_file:
+            console.print("[bold yellow]Warning:[/] Both plan file and --last option provided. Using --last.")
+        
+        planner = Planner()
+        plan_file = planner.get_latest_plan_path()
+        
+        if not plan_file:
+            console.print("[bold red]Error:[/] No plans found. Create a plan first with 'agentcli plan'.")
+            return
+        
+        console.print(f"[bold]Using latest plan:[/] {os.path.basename(plan_file)}")
+    elif not plan_file:
+        console.print("[bold red]Error:[/] Plan file is required unless --last option is used.")
+        console.print("Usage: agentcli apply <plan_file> or agentcli apply --last")
+        return
 
     try:
         with open(plan_file, 'r') as f:

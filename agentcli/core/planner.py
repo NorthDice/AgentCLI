@@ -20,9 +20,16 @@ class Planner:
         Args:
             llm_service: Service for working with LLM. By default, Azure OpenAI service is used.
         """
-        self.llm_service = llm_service or create_llm_service()
+        self._llm_service = llm_service
         self.plans_dir = os.path.join(os.getcwd(), "plans")
         os.makedirs(self.plans_dir, exist_ok=True)
+    
+    @property
+    def llm_service(self):
+        """Lazy initialization of LLM service."""
+        if self._llm_service is None:
+            self._llm_service = create_llm_service()
+        return self._llm_service
     
     def create_plan(self, query: str) -> Dict[str, Any]:
         """Creates an action plan based on a query.
@@ -117,3 +124,27 @@ class Planner:
             error_msg = f"Error while saving plan: {str(e)}"
             logger.exception(error_msg)
             raise PlanError(error_msg) from e
+    
+    def get_latest_plan_path(self) -> Optional[str]:
+        """Gets the path to the latest plan file.
+        
+        Returns:
+            str: Path to the latest plan file, or None if no plans exist.
+        """
+        try:
+            if not os.path.exists(self.plans_dir):
+                return None
+            
+            plan_files = [f for f in os.listdir(self.plans_dir) if f.endswith('.json')]
+            if not plan_files:
+                return None
+            
+            # Get modification times and find the latest file
+            plan_paths = [os.path.join(self.plans_dir, f) for f in plan_files]
+            latest_plan = max(plan_paths, key=os.path.getmtime)
+            
+            logger.debug(f"Latest plan found: {latest_plan}")
+            return latest_plan
+        except Exception as e:
+            logger.error(f"Error while getting latest plan: {str(e)}")
+            return None

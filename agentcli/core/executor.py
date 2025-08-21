@@ -277,6 +277,60 @@ class Executor:
                 result["success"] = True
                 result["message"] = f"File deleted: {path}"
             
+            elif action_type == "patch":
+                # Apply patch to file
+                if not path:
+                    error_msg = "File path not specified for patch"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                # If path is not absolute, use current directory
+                if not os.path.isabs(path):
+                    path = os.path.join(os.getcwd(), path)
+                
+                # Check if file exists
+                if not os.path.exists(path):
+                    error_msg = f"File not found for patching: {path}"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                # Import PatchEngine locally to avoid circular imports
+                try:
+                    from agentcli.core.patch_engine import PatchEngine
+                    patch_engine = PatchEngine()
+                except ImportError:
+                    error_msg = "PatchEngine not available"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                app_logger.debug(f"Applying patch to file: {path}")
+                
+                # Save old content for rollback
+                old_content = read_file(path)
+                
+                # Get patch definition from action
+                patches = action.get("patches", [])
+                if not patches:
+                    error_msg = "No patches specified for patch action"
+                    app_logger.error(error_msg)
+                    raise ActionError(error_msg, action)
+                
+                # Apply patches
+                patch_engine.apply_patches(path, patches)
+                
+                # Read new content for logging
+                new_content = read_file(path)
+                
+                self.logger.log_action("patch", f"File patched: {path}", {
+                    "path": path,
+                    "old_content": old_content,
+                    "new_content": new_content,
+                    "patches": patches
+                })
+                
+                result["success"] = True
+                result["message"] = f"File patched: {path}"
+            
             elif action_type == "info":
                 # Informational action, no changes required
                 app_logger.info(f"Informational action: {description}")

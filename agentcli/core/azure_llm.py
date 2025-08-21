@@ -24,7 +24,7 @@ class AzureOpenAIService(LLMService):
         self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15")
         self.deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
         self.model_name = os.getenv("AZURE_OPENAI_MODEL_NAME", "gpt-4")
-        self.temperature = float(os.getenv("LLM_TEMPERATURE", "0.3"))
+        self.temperature = float(os.getenv("LLM_TEMPERATURE", "0.7"))
         self.max_tokens = int(os.getenv("LLM_MAX_TOKENS", "10000"))
         
         if not self.api_key or not self.endpoint or not self.deployment:

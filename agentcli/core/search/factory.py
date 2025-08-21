@@ -2,7 +2,6 @@
 
 import logging
 from typing import Dict, Any, Optional
-
 from agentcli.core.search.interfaces import SearchService
 from agentcli.core.search.chunker import TreeSitterChunker
 from agentcli.core.search.embedder import SentenceTransformerEmbedder

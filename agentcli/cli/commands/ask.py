@@ -5,10 +5,33 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
 from rich.text import Text
+from contextlib import contextmanager
 
 from agentcli.core.search import perform_semantic_search, SearchServiceFactory
 from agentcli.core.azure_llm import create_llm_service
 from agentcli.utils.logging import logger
+
+# Import metrics collector with fallback
+try:
+    from agentcli.core.performance.collector import metrics_collector
+except ImportError:
+    metrics_collector = None
+
+
+@contextmanager
+def performance_tracker(operation: str, **kwargs):
+    """Context manager for tracking performance metrics."""
+    operation_context = None
+    
+    if metrics_collector:
+        operation_context = metrics_collector.start_operation(operation, **kwargs)
+        operation_context = operation_context.__enter__()
+    
+    try:
+        yield operation_context
+    finally:
+        if operation_context and metrics_collector:
+            operation_context.__exit__(None, None, None)
 
 
 class ProjectQAService:
@@ -166,44 +189,57 @@ def ask(question, top_k, rebuild_index, format):
     """
     console = Console()
     
-    if rebuild_index:
-        with console.status("🔄 Rebuilding search index..."):
-            search_service = SearchServiceFactory.get_default_semantic_search_service()
-            search_service.rebuild_index()
-        console.print("✅ Search index rebuilt!")
-    
-    # Initialize Q&A service
-    qa_service = ProjectQAService(console)
-    
-    # Show the question
-    question_panel = Panel(
-        Text(question, style="bold cyan"),
-        title="❓ Your Question",
-        border_style="cyan"
-    )
-    console.print(question_panel)
-    
-    # Get the answer
-    answer = qa_service.answer_question(question, top_k=top_k)
-    
-    # Display the answer
-    if format == "rich":
-        try:
-            # Try to render as markdown for rich formatting
-            answer_content = Markdown(answer)
-        except Exception:
-            # Fallback to plain text if markdown parsing fails
-            answer_content = Text(answer)
+    with performance_tracker("cli_ask_question", 
+                           question=question[:50] + "..." if len(question) > 50 else question,
+                           top_k=top_k,
+                           rebuild_index=rebuild_index) as ctx:
         
-        answer_panel = Panel(
-            answer_content,
-            title="🤖 Answer",
-            border_style="green"
+        if rebuild_index:
+            with console.status("🔄 Rebuilding search index..."):
+                search_service = SearchServiceFactory.get_default_semantic_search_service()
+                search_service.rebuild_index()
+            console.print("✅ Search index rebuilt!")
+        
+        # Initialize Q&A service
+        qa_service = ProjectQAService(console)
+        
+        # Show the question
+        question_panel = Panel(
+            Text(question, style="bold cyan"),
+            title="❓ Your Question",
+            border_style="cyan"
         )
-        console.print(answer_panel)
-    else:
-        # Plain format
-        console.print("\n" + answer + "\n")
+        console.print(question_panel)
+        
+        # Get the answer
+        answer = qa_service.answer_question(question, top_k=top_k)
+        
+        # Update metrics context
+        if ctx:
+            ctx.kwargs.update({
+                'items_processed': top_k,
+                'answer_length': len(answer),
+                'format': format
+            })
+        
+        # Display the answer
+        if format == "rich":
+            try:
+                # Try to render as markdown for rich formatting
+                answer_content = Markdown(answer)
+            except Exception:
+                # Fallback to plain text if markdown parsing fails
+                answer_content = Text(answer)
+            
+            answer_panel = Panel(
+                answer_content,
+                title="🤖 Answer",
+                border_style="green"
+            )
+            console.print(answer_panel)
+        else:
+            # Plain format
+            console.print("\n" + answer + "\n")
 
 
 if __name__ == "__main__":

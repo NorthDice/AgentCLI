@@ -9,6 +9,7 @@ AI-powered developer tool for code operations, analysis, and intelligent project
 - **📊 Code Analysis**: AST-based analysis with complexity metrics
 - **🔄 Safe Operations**: File operations with comprehensive rollback support
 - **📝 Code Generation**: AI-powered code generation from descriptions
+- **🏗️ Context-Aware Planning**: Use `--structure` flag for better refactoring with full project awareness
 
 ### Virtual Environment Management
 
@@ -101,13 +102,12 @@ agentcli gen "Add error handling" --output existing.py --dry-run
 
 ### Change Management
 ```bash
-# Rollback operations
-agentcli rollback                    # last operation
-agentcli rollback --steps 3          # multiple steps
-agentcli rollback --last-plan        # entire plan
-
 # Planning and execution
 agentcli plan "Refactor auth module"
+
+# Use --structure for better refactoring plans
+agentcli plan "Fix imports in app/crud.py" --structure
+agentcli plan "Refactor models to use Pydantic" --structure
 
 # Apply specific plan
 agentcli apply plans/plan-id.json
@@ -115,9 +115,16 @@ agentcli apply plans/plan-id.json
 # Apply last created plan (convenient!)
 agentcli apply --last
 
+# Rollback operations
+agentcli rollback                    # last operation
+agentcli rollback --steps 3          # multiple steps
+agentcli rollback --last-plan        # entire plan
+
 # Check execution status
 agentcli status
 ```
+
+**💡 Pro Tip**: When working with refactoring or code structure changes, use the `--structure` flag with `agentcli plan`. This provides the AI with full project context, ensuring accurate file paths, proper imports, and better understanding of your codebase organization.
 
 ### System
 ```bash
@@ -145,7 +152,31 @@ agentcli explain src/main.py --verbose
 agentcli plan "Add logging to authentication module"
 agentcli apply --last  # No need for long plan IDs!
 
-# 5. Generate new code
+# 5. Smart refactoring with project context
+agentcli plan "Fix imports in models/user.py" --structure
+agentcli apply --last --yes
+
+# 6. Generate new code
 agentcli gen "Class for user management" --output user.py
 ```
+
+### Working with Project Structure
+
+For refactoring tasks, the `--structure` flag is essential:
+
+```bash
+# ❌ Without --structure: AI might create incorrect file paths
+agentcli plan "Fix imports in crud.py"
+
+# ✅ With --structure: AI understands your project layout
+agentcli plan "Fix imports in app/crud.py" --structure
+```
+
+The `--structure` flag provides the AI with:
+- **📁 Directory structure** - knows where files are located
+- **🐍 Python modules** - understands import relationships  
+- **🔗 Dependencies** - sees how files connect
+- **📋 File exports** - knows what functions/classes exist
+
+This results in more accurate plans with correct file paths and imports.
 

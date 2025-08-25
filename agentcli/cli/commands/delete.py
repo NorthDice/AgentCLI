@@ -15,22 +15,14 @@ from agentcli.utils.logging import logger
 @click.option("--dry-run", "-d", is_flag=True, help="Preview what would be deleted without actually deleting")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
 def delete(file_path, reason, dry_run, yes):
-    """Delete specified file with rollback support.
-    
-    FILE_PATH - path to file to delete.
-    """
     action_logger = Logger()
     
-    # Convert to absolute path
     if not os.path.isabs(file_path):
         file_path = os.path.join(os.getcwd(), file_path)
     
-    # Check if file exists
     if not os.path.exists(file_path):
         click.echo(f"❌ File not found: {file_path}", err=True)
         return
-    
-    # Show file info
     click.echo(f"File to delete: {file_path}")
     if reason:
         click.echo(f"Reason: {reason}")
@@ -38,23 +30,21 @@ def delete(file_path, reason, dry_run, yes):
     if dry_run:
         click.echo(f"\nDry run mode: File would be deleted: {file_path}")
         return
-    
-    # Ask for confirmation unless --yes is provided
     if not yes and not click.confirm(f"Are you sure you want to delete '{file_path}'?", default=False):
         click.echo("File deletion cancelled.")
         return
     
     try:
-        # Read file content before deletion for rollback support
+
         file_content = read_file(file_path)
         
-        # Delete the file
+
         os.remove(file_path)
         
-        # Log the deletion with file content for rollback
+
         action_logger.log_action("delete", f"Deleted file: {file_path}" + (f" - {reason}" if reason else ""), {
             "path": file_path,
-            "content": file_content,  # Store content for rollback
+            "content": file_content,  
             "reason": reason or "Manual deletion"
         })
         

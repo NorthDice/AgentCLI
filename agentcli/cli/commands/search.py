@@ -74,14 +74,6 @@ def show_search_metrics(console: Console, operation_context) -> None:
 )
 def search(query, path, file_pattern, max_results, context, regex, case_sensitive,
            ignore_gitignore, semantic, semantic_results, rebuild_index, show_metrics, format):
-    """Search through project files.
-
-    QUERY - a string or regular expression to search for.
-    
-    Use --semantic flag to perform semantic search that understands the meaning of your query,
-    not just literal text matches. Use --semantic-results to control how many semantic results to show.
-    """
-    # Import metrics collector (delayed to avoid issues)
     try:
         from agentcli.core.performance.collector import metrics_collector
     except ImportError:
@@ -89,7 +81,6 @@ def search(query, path, file_pattern, max_results, context, regex, case_sensitiv
     
     console = Console()
 
-    # Start performance measurement
     operation_context = None
     if metrics_collector:
         operation_type = "cli_semantic_search" if semantic else "cli_text_search"
@@ -100,13 +91,11 @@ def search(query, path, file_pattern, max_results, context, regex, case_sensitiv
         ).__enter__()
 
     try:
-        # Normalize path
         if path == ".":
             path = os.getcwd()
         else:
             path = os.path.abspath(path)
 
-        # Use enhanced search that includes filename matching
         with console.status(f"Searching for '{query}' in {path}..."):
             results = enhanced_search(
                 query=query,
@@ -115,15 +104,12 @@ def search(query, path, file_pattern, max_results, context, regex, case_sensitiv
                 max_results=max_results
             )
 
-        # Update metrics context
         if operation_context:
             operation_context.kwargs['items_processed'] = len(results)
 
-        # Show results with enhanced formatter
         formatted_output = format_enhanced_results(results, query)
         console.print(formatted_output)
-        
-        # Show metrics if requested
+
         if show_metrics and operation_context:
             show_search_metrics(console, operation_context)
             
@@ -131,6 +117,5 @@ def search(query, path, file_pattern, max_results, context, regex, case_sensitiv
         console.print(f"[red]Search error: {e}[/red]")
         raise
     finally:
-        # Complete performance measurement
         if operation_context and metrics_collector:
             operation_context.__exit__(None, None, None)

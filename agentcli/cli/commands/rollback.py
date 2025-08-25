@@ -10,7 +10,6 @@ from contextlib import contextmanager
 
 from agentcli.core.executor import Executor
 
-# Import metrics collector with fallback
 try:
     from agentcli.core.performance.collector import metrics_collector
 except ImportError:
@@ -38,18 +37,13 @@ def performance_tracker(operation: str, **kwargs):
 @click.option("--last-plan", is_flag=True, help="Roll back the last executed plan")
 @click.option("--yes", "-y", is_flag=True, help="Confirm rollback without asking")
 def rollback(steps, last_plan, yes):
-    """Rolls back recent changes.
-    
-    By default, the last action is rolled back. Use --steps to specify how many steps to roll back,
-    or --last-plan to rollback the most recent plan.
-    """
+
     console = Console()
     
     with performance_tracker("cli_rollback", 
                            steps=steps, 
                            last_plan=last_plan) as ctx:
         
-        # Handle last plan rollback
         if last_plan:
             return handle_last_plan_rollback(yes, console)
         
@@ -57,7 +51,6 @@ def rollback(steps, last_plan, yes):
             console.print("[red]Error:[/] Steps must be a positive number")
             return
         
-        # Confirm rollback if --yes is not provided
         if not yes:
             console.print(f"[yellow]Warning:[/] The last {steps} actions will be rolled back.")
             console.print("[yellow]This action cannot be undone![/]")
@@ -66,24 +59,20 @@ def rollback(steps, last_plan, yes):
             if not confirm:
                 console.print("Rollback canceled.")
                 return
-        
-        # Perform rollback
+
         with console.status(f"Rolling back the last {steps} actions..."):
             executor = Executor()
             result = executor.rollback(steps)
         
-        # Update metrics context
         if ctx:
             ctx.kwargs.update({
                 'actions_rolled_back': len(result.get('actions_rolled_back', [])),
                 'rollback_success': result.get('success', False)
             })
         
-        # Display result
         if result["success"]:
             console.print(f"\n[bold green]✓[/] Successfully rolled back {len(result['actions_rolled_back'])} actions")
             
-            # Display rolled back actions
             for i, action in enumerate(result["actions_rolled_back"], 1):
                 panel = Panel(
                     f"[bold]Type:[/] {action['type']}\n"
@@ -96,7 +85,6 @@ def rollback(steps, last_plan, yes):
         else:
             console.print("[bold red]✗[/] Error during rollback")
             
-            # Display detailed errors
             if result["errors"]:
                 console.print("[bold red]Errors:[/]")
                 for i, error in enumerate(result["errors"], 1):
@@ -104,13 +92,11 @@ def rollback(steps, last_plan, yes):
             else:
                 console.print("  No detailed error information available.")
         
-        # Display errors if any
         if result.get("errors"):
             console.print("\n[bold red]Rollback errors:[/]")
             for error in result["errors"]:
                 console.print(f"  [red]•[/] {error}")
-        
-        # Show warning if fewer actions were rolled back than requested
+
         if result["success"] and len(result["actions_rolled_back"]) < steps:
             console.print(
                 f"\n[yellow]Warning:[/] Rolled back {len(result['actions_rolled_back'])} of {steps} "
@@ -119,21 +105,14 @@ def rollback(steps, last_plan, yes):
 
 
 def handle_last_plan_rollback(yes, console):
-    """Handle rollback of the last executed plan.
-    
-    Args:
-        yes (bool): Skip confirmation if True
-        console: Rich console for output
-    """
+
     with performance_tracker("cli_rollback_plan") as ctx:
-        
-        # Find the most recent plan that was executed
+
         plans_dir = Path("plans")
         if not plans_dir.exists():
             console.print("[red]Error:[/] Plans directory not found")
             return
-        
-        # Get all plan files sorted by modification time (most recent first)
+
         plan_files = sorted(
             [f for f in plans_dir.glob("*.json")],
             key=lambda f: f.stat().st_mtime,
@@ -144,11 +123,9 @@ def handle_last_plan_rollback(yes, console):
             console.print("[red]Error:[/] No plans found")
             return
         
-        # Use the most recent plan
         most_recent_plan = plan_files[0]
     
     try:
-        # Load the plan
         with open(most_recent_plan, 'r') as f:
             plan = json.load(f)
         
@@ -162,7 +139,6 @@ def handle_last_plan_rollback(yes, console):
         console.print(f"[bold]Actions to rollback:[/] {len(actions)}")
         
         try:
-            # Read the plan to determine how many actions to rollback
             with open(most_recent_plan, 'r') as f:
                 plan = json.load(f)
             
@@ -174,20 +150,18 @@ def handle_last_plan_rollback(yes, console):
             plan_id = plan.get('id', most_recent_plan.stem)
             console.print(f"[bold]Rolling back most recent plan:[/] {plan_id}")
             console.print(f"[bold]Actions to rollback:[/] {len(actions)}")
-            
-            # Update metrics context
+
             if ctx:
                 ctx.kwargs.update({
                     'plan_id': plan_id,
                     'actions_count': len(actions)
                 })
             
-            # Show actions that will be rolled back
+
             console.print("\n[bold]Actions in plan:[/]")
             for i, action in enumerate(actions, 1):
                 console.print(f"  {i}. {action.get('type', 'unknown')} - {action.get('description', 'No description')}")
             
-            # Confirm rollback if --yes is not provided
             if not yes:
                 console.print(f"\n[yellow]Warning:[/] All {len(actions)} actions from the most recent plan will be rolled back.")
                 console.print("[yellow]This action cannot be undone![/]")
@@ -197,24 +171,21 @@ def handle_last_plan_rollback(yes, console):
                     console.print("Plan rollback canceled.")
                     return
             
-            # Perform rollback - roll back the number of actions in the plan
             with console.status(f"Rolling back plan {plan_id}..."):
                 executor = Executor()
                 result = executor.rollback(len(actions))
             
-            # Update metrics with results
             if ctx:
                 ctx.kwargs.update({
                     'actions_rolled_back': len(result.get('actions_rolled_back', [])),
                     'rollback_success': result.get('success', False)
                 })
             
-            # Display result
+
             if result["success"]:
                 console.print(f"\n[bold green]✓[/] Successfully rolled back plan '{plan_id}'")
                 console.print(f"[green]Rolled back {len(result['actions_rolled_back'])} actions[/]")
                 
-                # Display rolled back actions
                 for i, action in enumerate(result["actions_rolled_back"], 1):
                     panel = Panel(
                         f"[bold]Type:[/] {action['type']}\n"
@@ -227,7 +198,6 @@ def handle_last_plan_rollback(yes, console):
             else:
                 console.print(f"[bold red]✗[/] Error rolling back plan '{plan_id}'")
                 
-                # Display detailed errors
                 if result["errors"]:
                     console.print("[bold red]Errors:[/]")
                     for i, error in enumerate(result["errors"], 1):
@@ -235,13 +205,11 @@ def handle_last_plan_rollback(yes, console):
                 else:
                     console.print("  No detailed error information available.")
             
-            # Display errors if any
             if result.get("errors"):
                 console.print("\n[bold red]Rollback errors:[/]")
                 for error in result["errors"]:
                     console.print(f"  [red]•[/] {error}")
-            
-            # Show warning if fewer actions were rolled back than expected
+
             if result["success"] and len(result["actions_rolled_back"]) < len(actions):
                 console.print(
                     f"\n[yellow]Warning:[/] Rolled back {len(result['actions_rolled_back'])} of {len(actions)} "

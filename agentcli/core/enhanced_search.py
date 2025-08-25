@@ -11,17 +11,7 @@ from agentcli.core.search import perform_semantic_search, search_files
 
 
 def enhanced_search(query: str, path: str = ".", semantic: bool = False, max_results: int = 100) -> List[Dict[str, Any]]:
-    """Enhanced search that combines filename matching with content search.
-    
-    Args:
-        query: Search query
-        path: Base path for search
-        semantic: Whether to use semantic search
-        max_results: Maximum number of results
-        
-    Returns:
-        List of search results
-    """
+
     results = []
 
     filename_results = search_by_filename(query, path)
@@ -212,7 +202,6 @@ def format_enhanced_results(results: List[Dict[str, Any]], query: str) -> str:
             output.append(f"  {result['file']}")
     
     if content_matches:
-        # Separate semantic and text matches for better display
         semantic_matches = [r for r in content_matches if r['match_type'] == 'semantic']
         text_matches = [r for r in content_matches if r['match_type'] == 'text']
         

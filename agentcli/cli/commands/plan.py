@@ -45,14 +45,7 @@ def performance_tracker(operation: str, **kwargs):
               help="Output format of the plan (default: json)")
 @click.option("--structure", is_flag=True, help="Include project structure context for better planning")
 def plan(query, output, format, structure):
-    """Creates an action plan based on a query.
-    
-    QUERY - natural language query for creating a plan.
-    
-    Use --structure flag to include project structure context,
-    which helps the AI understand your codebase better and create
-    more accurate plans with correct file paths and imports.
-    """
+
     console = Console()
     
     with performance_tracker("cli_create_plan", 
@@ -149,18 +142,15 @@ def plan(query, output, format, structure):
                         console.print("\n[bold red]Traceback:[/]")
                         console.print(traceback.format_exc())
                     return 1
-        
-            # Show result
+
             console.print(f"\n[bold green]✓[/] Plan created and saved to: [bold]{output}[/]")
             
-            # Show plan actions
             console.print("\n[bold]Plan actions:[/]")
             for i, action in enumerate(result_plan["actions"], 1):
                 action_type = action.get("type", "unknown")
                 description = action.get("description", "No description")
                 path = action.get("path", "")
-                
-                # Create panel with action description
+     
                 action_panel = Panel(
                     f"[bold]Type:[/] {action_type}\n"
                     f"[bold]Path:[/] {path}\n"
@@ -170,7 +160,6 @@ def plan(query, output, format, structure):
                 )
                 console.print(action_panel)
                 
-                # Show content with syntax highlighting if present
                 if action.get("content"):
                     ext = os.path.splitext(path)[1] if path else ".txt"
                     syntax = Syntax(
@@ -197,7 +186,6 @@ def plan(query, output, format, structure):
             logger.exception(f"Unexpected error: {str(e)}")
             console.print(f"\n[bold red]✗[/] Unexpected error: {str(e)}")
             
-            # Show traceback in debug mode
             if os.environ.get("AGENTCLI_LOG_LEVEL") == "DEBUG":
                 console.print("\n[bold red]Traceback:[/]")
                 console.print(traceback.format_exc())

@@ -3,7 +3,6 @@
 import logging
 from typing import Dict, Any, Optional
 from agentcli.core.search.interfaces import SearchService
-from agentcli.core.search.chunker import TreeSitterChunker
 from agentcli.core.search.embedder import SentenceTransformerEmbedder
 from agentcli.core.search.vector_store import ChromaVectorStore
 from agentcli.core.search.semantic_search import SemanticSearchService
@@ -25,7 +24,6 @@ class SearchServiceFactory:
         """
         config = config or {}
         
-        # Create components
         from agentcli.core.chunkers.ast_function_chunker import ASTFunctionChunker
         chunker = ASTFunctionChunker()
         embedder = SentenceTransformerEmbedder(
@@ -35,7 +33,7 @@ class SearchServiceFactory:
             index_dir=config.get("index_dir", ".agentcli/search_index"),
             collection_name=config.get("collection_name", "code_chunks")
         )
-        # Create service
+
         return SemanticSearchService(chunker, embedder, vector_store)
     
     @staticmethod

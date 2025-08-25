@@ -198,7 +198,6 @@ class SemanticSearchService(SearchService):
                 "errors": []
             }
             
-            # Find all files matching the patterns
             all_files = []
             for pattern in patterns:
                 pattern_files = glob.glob(os.path.join(directory, "**", pattern), recursive=True)
@@ -208,7 +207,6 @@ class SemanticSearchService(SearchService):
                 logger.info(f"[DIAG] Файл: {f}")
             stats["total_files"] = len(all_files)
             
-            # Index each file
             for file_path in all_files:
                 try:
                     result = self.index_file(file_path)

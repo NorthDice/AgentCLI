@@ -28,7 +28,6 @@ def build_index(path, patterns):
     search_service = SearchServiceFactory.get_default_semantic_search_service()
     stats = search_service.index_directory(path, patterns)
     
-    # Display statistics
     console.print(f"\n[bold green]✓[/] Index build completed")
     console.print(f"  Total files scanned: {stats['total_files']}")
     console.print(f"  Files successfully indexed: {stats['indexed_files']}")
@@ -51,7 +50,6 @@ def index_info():
     try:
         from agentcli.core.search.vector_store import ChromaVectorStore
         
-        # Get information about the index
         store = ChromaVectorStore()
         count = store.count()
         
@@ -73,7 +71,6 @@ def clear_index(yes):
     """Clear the search index."""
     console = Console()
     
-    # Confirm operation
     if not yes:
         console.print("[yellow]Warning:[/] This will delete the entire search index.")
         if not click.confirm("Continue?", default=False):
@@ -83,7 +80,6 @@ def clear_index(yes):
     try:
         from agentcli.core.search.vector_store import ChromaVectorStore
         
-        # Clear the index
         store = ChromaVectorStore()
         store.clear()
         

@@ -44,11 +44,9 @@ class ChromaIndexer:
         self.cache_manager = CacheManager(self.project_path)
         self.structure_provider = StructureProvider()
         
-        # ChromaDB setup
         self.chroma_db_path = os.path.join(self.project_path, '.agentcli', 'chromadb')
         os.makedirs(self.chroma_db_path, exist_ok=True)
         
-        # Initialize ChromaDB client
         self.client = chromadb.PersistentClient(
             path=self.chroma_db_path,
             settings=Settings(
@@ -57,26 +55,21 @@ class ChromaIndexer:
             )
         )
         
-        # Collections
         self.code_collection = None
         self.structure_collection = None
         self._init_collections()
         
-        # Threading components
         self._indexing_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._task_queue = Queue()
         self._is_running = False
         
-        # State
-        self._indexing_status = "idle"  # idle, indexing, ready, error
+        self._indexing_status = "idle"  
         self._last_indexing_time: Optional[float] = None
         self._indexed_files_count = 0
-        
-        # Callbacks
+
         self._status_callbacks = []
         
-        # File watcher for automatic indexing
         self._file_watcher: Optional[FileWatcher] = None
     
     def _init_collections(self):

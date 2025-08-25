@@ -20,12 +20,7 @@ class ChromaVectorStore(VectorStore):
     """Vector store implementation using ChromaDB."""
     
     def __init__(self, index_dir: str = ".agentcli/search_index", collection_name: str = "code_chunks"):
-        """Initialize the vector store.
-        
-        Args:
-            index_dir: Directory to store the ChromaDB index.
-            collection_name: Name of the collection to use.
-        """
+
         self.index_dir = index_dir
         self.collection_name = collection_name
         self.client = None
@@ -39,10 +34,8 @@ class ChromaVectorStore(VectorStore):
             
         if self.client is None:
             try:
-                # Create directory if it doesn't exist
                 os.makedirs(self.index_dir, exist_ok=True)
                 
-                # Initialize client
                 self.client = chromadb.PersistentClient(path=self.index_dir)
             except Exception as e:
                 logger.error(f"Error initializing ChromaDB client: {str(e)}")
@@ -50,7 +43,6 @@ class ChromaVectorStore(VectorStore):
         
         if self.collection is None:
             try:
-                # Get or create collection
                 try:
                     self.collection = self.client.get_collection(name=self.collection_name)
                     logger.info(f"Using existing collection '{self.collection_name}'")
@@ -62,25 +54,18 @@ class ChromaVectorStore(VectorStore):
                 raise
     
     def add(self, items: List[Dict[str, Any]]) -> None:
-        """Add items to the vector store.
-        
-        Args:
-            items: List of dictionaries containing content, metadata, and embeddings.
-        """
         if not items:
             return
             
         self._initialize()
         
         try:
-            # Prepare data for ChromaDB format
             ids = []
             documents = []
             embeddings = []
             metadatas = []
             
             for item in items:
-                # Create a unique ID from file path and line numbers
                 metadata = item["metadata"]
                 item_id = f"{metadata.get('file_path', 'unknown')}:{metadata.get('start_line', 0)}:{metadata.get('end_line', 0)}"
                 
@@ -89,7 +74,6 @@ class ChromaVectorStore(VectorStore):
                 embeddings.append(item["embedding"])
                 metadatas.append(metadata)
             
-            # Add to collection in batches (ChromaDB has limits on batch size)
             batch_size = 100
             for i in range(0, len(ids), batch_size):
                 self.collection.add(
@@ -104,15 +88,7 @@ class ChromaVectorStore(VectorStore):
             logger.error(f"Error adding items to ChromaDB: {str(e)}")
     
     def search(self, query_embedding: List[float], top_k: int = 5) -> List[Dict[str, Any]]:
-        """Search for similar vectors in the store.
-        
-        Args:
-            query_embedding: Query embedding vector.
-            top_k: Number of top results to return.
-            
-        Returns:
-            List of dictionaries containing found items with relevance scores.
-        """
+
         if not query_embedding:
             return []
             
@@ -124,7 +100,6 @@ class ChromaVectorStore(VectorStore):
                 n_results=top_k
             )
             
-            # Format results
             formatted_results = []
             
             if results["ids"] and len(results["ids"][0]) > 0:
@@ -134,7 +109,7 @@ class ChromaVectorStore(VectorStore):
                     results["metadatas"][0], 
                     results["distances"][0]
                 )):
-                    # Convert distance to relevance score (higher is better)
+
                     relevance = 1.0 - distance
                     
                     formatted_results.append({
@@ -149,11 +124,6 @@ class ChromaVectorStore(VectorStore):
             return []
     
     def delete(self, item_ids: List[str]) -> None:
-        """Delete items from the store.
-        
-        Args:
-            item_ids: List of item IDs to delete.
-        """
         if not item_ids:
             return
             
@@ -177,11 +147,7 @@ class ChromaVectorStore(VectorStore):
             logger.error(f"Error clearing ChromaDB collection: {str(e)}")
     
     def count(self) -> int:
-        """Get the number of items in the store.
-        
-        Returns:
-            Number of items in the store.
-        """
+
         self._initialize()
         
         try:

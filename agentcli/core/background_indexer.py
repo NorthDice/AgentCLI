@@ -26,9 +26,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class IndexingTask:
     """Represents an indexing task."""
-    task_type: str  # 'full_project', 'single_file', 'structure_only'
+    task_type: str 
     file_path: Optional[str] = None
-    priority: int = 0  # Lower number = higher priority
+    priority: int = 0  
     callback: Optional[Callable] = None
 
 
@@ -44,22 +44,18 @@ class BackgroundIndexer:
         self.project_path = project_path or os.getcwd()
         self.cache_manager = CacheManager(self.project_path)
         self.structure_provider = StructureProvider()
-        
-        # Threading components
+
         self._indexing_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._task_queue = Queue()
         self._is_running = False
         
-        # State
-        self._indexing_status = "idle"  # idle, indexing, error
+        self._indexing_status = "idle"  
         self._last_indexing_time: Optional[float] = None
         self._indexed_files_count = 0
         
-        # Callbacks
         self._status_callbacks = []
         
-        # Initialize semantic search engine
         try:
             chunker = ASTFunctionChunker()
             embedder = SentenceTransformerEmbedder() 
@@ -102,7 +98,6 @@ class BackgroundIndexer:
         
         logger.info("Background indexer started")
         
-        # Queue initial full project indexing if cache is invalid
         if not self.cache_manager.is_cache_valid():
             self.queue_full_project_indexing()
         else:
@@ -118,7 +113,6 @@ class BackgroundIndexer:
         self._is_running = False
         self._stop_event.set()
         
-        # Add stop sentinel to queue
         self._task_queue.put(None)
         
         if self._indexing_thread and self._indexing_thread.is_alive():
@@ -141,7 +135,7 @@ class BackgroundIndexer:
         task = IndexingTask(
             task_type="single_file",
             file_path=file_path,
-            priority=0,  # High priority for single files
+            priority=0, 
             callback=callback
         )
         self._task_queue.put(task)
@@ -163,21 +157,16 @@ class BackgroundIndexer:
         
         while self._is_running and not self._stop_event.is_set():
             try:
-                # Get task from queue with timeout
                 task = self._task_queue.get(timeout=1.0)
                 
-                # Check for stop sentinel
                 if task is None:
                     break
                 
-                # Process task
                 self._process_indexing_task(task)
                 
-                # Mark task as done
                 self._task_queue.task_done()
                 
             except Empty:
-                # No tasks in queue, continue
                 continue
             except Exception as e:
                 logger.error(f"Error in indexing worker: {e}")
@@ -197,7 +186,6 @@ class BackgroundIndexer:
             elif task.task_type == "structure_only":
                 self._process_structure_update()
             
-            # Call callback if provided
             if task.callback:
                 task.callback(True, None)
                 
@@ -208,7 +196,6 @@ class BackgroundIndexer:
             if task.callback:
                 task.callback(False, str(e))
         
-        # Update timing
         self._last_indexing_time = time.time() - start_time
     
     def _process_full_project_indexing(self):
@@ -216,30 +203,25 @@ class BackgroundIndexer:
         self._notify_status("indexing", {"type": "full_project"})
         logger.info("Starting full project indexing...")
         logger.info(f"[DIAG] Индексируемый путь: {self.project_path}")
-        # Analyze project structure
         structure_data = self.structure_provider.get_structure_summary(self.project_path)
         logger.info(f"[DIAG] Структура проекта: {structure_data}")
         self.cache_manager.set_structure_cache({
             'summary': structure_data,
             'timestamp': time.time()
         })
-        # Индексировать только изменённые, новые или удалённые файлы
         old_hashes = self.cache_manager._metadata.get('file_hashes', {})
         new_hashes = self.cache_manager._get_project_files_hashes()
         changed_files = []
         removed_files = []
-        # Найти изменённые и новые файлы
         for rel_path, new_hash in new_hashes.items():
             old_hash = old_hashes.get(rel_path)
             if old_hash != new_hash:
                 changed_files.append(os.path.join(self.project_path, rel_path))
-        # Найти удалённые файлы
         for rel_path in old_hashes:
             if rel_path not in new_hashes:
                 removed_files.append(os.path.join(self.project_path, rel_path))
         logger.info(f"[DIAG] Изменённые/новые файлы для индексации: {len(changed_files)}")
         logger.info(f"[DIAG] Удалённые файлы: {len(removed_files)}")
-        # Индексировать только изменённые/новые файлы
         stats = {
             "directory": self.project_path,
             "total_files": len(changed_files),
@@ -265,13 +247,11 @@ class BackgroundIndexer:
                         "file": file_path,
                         "error": str(e)
                     })
-        # Можно добавить обработку удаления файлов из индекса, если требуется
         self.cache_manager.set_index_cache({
             'index': stats,
             'timestamp': time.time()
         })
         self._indexed_files_count = stats.get('indexed_files', 0)
-        # Finalize cache
         self.cache_manager.finalize_cache()
         logger.info(f"Full project indexing completed. Indexed {self._indexed_files_count} files")
         self._notify_status("ready", {
@@ -289,14 +269,11 @@ class BackgroundIndexer:
         self._notify_status("indexing", {"type": "single_file", "file": file_path})
         logger.debug(f"Indexing single file: {file_path}")
         
-        # Update file in cache
         self.cache_manager.update_file_in_cache(file_path)
-        
-        # Update semantic search index for this file
+
         if self.search_engine:
             self.search_engine.index_file(file_path)
-        
-        # Update structure if it's a Python file
+ 
         if file_path.endswith('.py'):
             self.queue_structure_update()
         
@@ -307,8 +284,7 @@ class BackgroundIndexer:
         """Process structure update only."""
         self._notify_status("indexing", {"type": "structure_only"})
         logger.debug("Updating project structure...")
-        
-        # Re-analyze structure
+
         structure_data = self.structure_provider.get_structure_summary(self.project_path)
         self.cache_manager.set_structure_cache({
             'summary': structure_data,

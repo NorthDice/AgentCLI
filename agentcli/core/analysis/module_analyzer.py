@@ -311,7 +311,7 @@ class ModuleAnalyzer:
     
     def _calculate_function_complexity(self, node: ast.FunctionDef) -> int:
         """Calculate cyclomatic complexity for a function."""
-        complexity = 1  # Base complexity
+        complexity = 1 
         
         for child in ast.walk(node):
             if isinstance(child, (ast.If, ast.While, ast.For, ast.AsyncFor)):

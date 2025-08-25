@@ -16,7 +16,6 @@ from agentcli.core.planner import Planner
 from agentcli.core.exceptions import ValidationError
 from agentcli.utils.logging import logger
 
-# Import metrics collector with fallback
 try:
     from agentcli.core.performance.collector import metrics_collector
 except ImportError:
@@ -46,10 +45,6 @@ def performance_tracker(operation: str, **kwargs):
 @click.option("--skip-validation", is_flag=True, help="Skip validation before execution")
 @click.option("--yes", "-y", is_flag=True, help="Automatically confirm actions without asking")
 def apply(plan_file, last, dry_run, skip_validation, yes):
-    """Execute an action plan from file.
-    
-    PLAN_FILE - path to the plan file (JSON/YAML). Optional if --last is used.
-    """
     console = Console()
 
     with performance_tracker("cli_apply_plan", 
@@ -57,7 +52,6 @@ def apply(plan_file, last, dry_run, skip_validation, yes):
                            dry_run=dry_run,
                            skip_validation=skip_validation) as ctx:
 
-        # Determine which plan to use
         if last:
             if plan_file:
                 console.print("[bold yellow]Warning:[/] Both plan file and --last option provided. Using --last.")
@@ -89,7 +83,6 @@ def apply(plan_file, last, dry_run, skip_validation, yes):
         console.print(f"[bold]Plan ID:[/] {plan.get('id', 'Not specified')}")
         console.print(f"[bold]Number of actions:[/] {len(plan.get('actions', []))}")
         
-        # Update metrics context
         if ctx:
             ctx.kwargs.update({
                 'items_processed': len(plan.get('actions', [])),
@@ -174,7 +167,6 @@ def apply(plan_file, last, dry_run, skip_validation, yes):
             with console.status("[bold green]Executing plan...[/]"):
                 result = executor.execute_plan(plan, skip_validation=True)
             
-            # Update metrics with execution results
             if ctx:
                 ctx.kwargs.update({
                     'executed_actions': len(result.get("executed_actions", [])),

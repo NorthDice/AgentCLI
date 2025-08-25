@@ -91,32 +91,32 @@ class ProjectQAService:
         files_list = "\n".join(f"- {file}" for file in sorted(files_found))
         
         prompt = f"""You are an expert code assistant helping a developer understand their codebase. 
-Based on the provided code snippets, answer the user's question accurately and helpfully.
+                    Based on the provided code snippets, answer the user's question accurately and helpfully.
 
-**Question:** {question}
+                    **Question:** {question}
 
-**Relevant code found in these files:**
-{files_list}
+                    **Relevant code found in these files:**
+                    {files_list}
 
-**Code Context:**
-{context}
+                    **Code Context:**
+                    {context}
 
-**Instructions:**
-1. Answer the question based ONLY on the provided code context
-2. Be specific and reference the actual code when possible
-3. If the code doesn't contain enough information to fully answer the question, say so
-4. Use technical terms appropriately but explain complex concepts
-5. Format your answer in markdown for better readability
-6. Include code examples from the context when relevant
+                    **Instructions:**
+                    1. Answer the question based ONLY on the provided code context
+                    2. Be specific and reference the actual code when possible
+                    3. If the code doesn't contain enough information to fully answer the question, say so
+                    4. Use technical terms appropriately but explain complex concepts
+                    5. Format your answer in markdown for better readability
+                    6. Include code examples from the context when relevant
 
-**Answer:**"""
+            **Answer:**"""
 
         try:
             response = self.llm_service.complete(prompt)
             return response.strip()
         except Exception as e:
             logger.error(f"LLM completion failed: {e}")
-            # Fallback: provide a basic answer based on search results
+
             return self._create_fallback_answer(question, search_results)
     
     def _get_language_from_path(self, file_path: str) -> str:
@@ -178,15 +178,6 @@ Based on the provided code snippets, answer the user's question accurately and h
 @click.option("--rebuild-index", is_flag=True, help="Rebuild the search index before answering")
 @click.option("--format", type=click.Choice(["rich", "plain"]), default="rich", help="Output format")
 def ask(question, top_k, rebuild_index, format):
-    """Ask a question about your project and get an AI-powered answer.
-    
-    QUESTION - Your question about the codebase
-    
-    Examples:
-      agentcli ask "How does the rollback functionality work?"
-      agentcli ask "What files are involved in the delete command?"
-      agentcli ask "How is the LLM service configured?"
-    """
     console = Console()
     
     with performance_tracker("cli_ask_question", 
@@ -199,11 +190,9 @@ def ask(question, top_k, rebuild_index, format):
                 search_service = SearchServiceFactory.get_default_semantic_search_service()
                 search_service.rebuild_index()
             console.print("✅ Search index rebuilt!")
-        
-        # Initialize Q&A service
+
         qa_service = ProjectQAService(console)
         
-        # Show the question
         question_panel = Panel(
             Text(question, style="bold cyan"),
             title="❓ Your Question",
@@ -211,10 +200,8 @@ def ask(question, top_k, rebuild_index, format):
         )
         console.print(question_panel)
         
-        # Get the answer
         answer = qa_service.answer_question(question, top_k=top_k)
         
-        # Update metrics context
         if ctx:
             ctx.kwargs.update({
                 'items_processed': top_k,
@@ -222,13 +209,10 @@ def ask(question, top_k, rebuild_index, format):
                 'format': format
             })
         
-        # Display the answer
         if format == "rich":
             try:
-                # Try to render as markdown for rich formatting
                 answer_content = Markdown(answer)
             except Exception:
-                # Fallback to plain text if markdown parsing fails
                 answer_content = Text(answer)
             
             answer_panel = Panel(
@@ -238,7 +222,6 @@ def ask(question, top_k, rebuild_index, format):
             )
             console.print(answer_panel)
         else:
-            # Plain format
             console.print("\n" + answer + "\n")
 
 

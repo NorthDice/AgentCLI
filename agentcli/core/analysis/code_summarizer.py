@@ -102,18 +102,18 @@ class CodeSummarizer:
     def _generate_summary(self, context: str, module_info: ModuleInfo) -> str:
         """Generate LLM-based summary."""
         prompt = f"""
-Analyze the following Python module and provide a concise summary:
+            Analyze the following Python module and provide a concise summary:
 
-{context}
+            {context}
 
-Please provide a clear, concise summary that includes:
-1. The main purpose of this module
-2. Key functionality it provides
-3. Primary inputs and outputs
-4. How it fits into a larger system (if apparent)
+            Please provide a clear, concise summary that includes:
+            1. The main purpose of this module
+            2. Key functionality it provides
+            3. Primary inputs and outputs
+            4. How it fits into a larger system (if apparent)
 
-Keep the summary under 150 words and focus on what the module does, not how it's implemented.
-"""
+            Keep the summary under 150 words and focus on what the module does, not how it's implemented.
+            """
         
         try:
             actions = self.llm_service.generate_actions(prompt)
@@ -155,7 +155,7 @@ Keep the summary under 150 words and focus on what the module does, not how it's
         """Extract key points about the module."""
         points = []
         
-        # Classes
+
         if module_info.classes:
             for cls in module_info.classes:
                 if cls.docstring:
@@ -177,7 +177,7 @@ Keep the summary under 150 words and focus on what the module does, not how it's
         if module_info.complexity_score > 20:
             points.append(f"⚠️ High complexity score: {module_info.complexity_score}")
         
-        return points[:8]  # Limit to 8 key points
+        return points[:8]  
     
     def _analyze_dependencies(self, module_info: ModuleInfo) -> List[str]:
         """Analyze module dependencies."""

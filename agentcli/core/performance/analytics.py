@@ -8,7 +8,6 @@ from .models import OperationMetrics
 
 
 class MetricsAnalyzer:
-    """Analyzer for performance metrics data."""
     
     def __init__(self, metrics: List[OperationMetrics]):
         self.metrics = metrics
@@ -18,7 +17,6 @@ class MetricsAnalyzer:
         if not self.metrics:
             return {"message": "No metrics to analyze"}
         
-        # Sort by time
         sorted_metrics = sorted(self.metrics, key=lambda m: m.start_time)
         
         durations = [m.duration for m in sorted_metrics]
@@ -48,7 +46,6 @@ class MetricsAnalyzer:
         }
     
     def get_operation_breakdown(self) -> Dict[str, Dict[str, Any]]:
-        """Get performance breakdown by operation type."""
         operation_groups = {}
         
         for metric in self.metrics:
@@ -75,7 +72,6 @@ class MetricsAnalyzer:
         return breakdown
     
     def _calculate_performance_rating(self, durations: List[float], memory_deltas: List[float]) -> str:
-        """Calculate overall performance rating."""
         avg_duration = statistics.mean(durations)
         avg_memory = statistics.mean(memory_deltas)
         
@@ -92,7 +88,6 @@ class MetricsAnalyzer:
         """Detect potential performance issues."""
         issues = []
         
-        # Check for slow operations
         slow_ops = [m for m in self.metrics if m.duration > 5.0]
         if slow_ops:
             issues.append({
@@ -102,7 +97,6 @@ class MetricsAnalyzer:
                 "severity": "high" if len(slow_ops) > len(self.metrics) * 0.2 else "medium"
             })
         
-        # Check for memory leaks
         memory_leaks = [m for m in self.metrics if m.memory_delta_mb > 100]
         if memory_leaks:
             issues.append({
@@ -112,7 +106,6 @@ class MetricsAnalyzer:
                 "severity": "high"
             })
         
-        # Check for high failure rate
         failed_ops = [m for m in self.metrics if not m.success]
         failure_rate = len(failed_ops) / len(self.metrics) * 100 if self.metrics else 0
         if failure_rate > 10:

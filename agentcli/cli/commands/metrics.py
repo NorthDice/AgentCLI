@@ -17,7 +17,6 @@ def metrics():
 
 @metrics.command()
 def show():
-    """Show current session metrics."""
     try:
         from agentcli.core.performance.collector import metrics_collector
     except ImportError:
@@ -31,42 +30,36 @@ def show():
         console.print(f"[yellow]{stats['message']}[/yellow]")
         return
     
-    # Main statistics table
     table = Table(title="📊 Session Performance Metrics", show_header=True, header_style="bold cyan")
     table.add_column("Metric", style="cyan", no_wrap=True)
     table.add_column("Value", style="magenta")
     table.add_column("Details", style="dim")
-    
-    # Session info
+
     table.add_row("Session Duration", f"{stats['session_duration']:.1f}s", "Total session time")
     table.add_row("Total Operations", str(stats['total_operations']), "All recorded operations")
     table.add_row("Success Rate", f"{(stats['successful_operations']/stats['total_operations']*100):.1f}%", f"{stats['successful_operations']}/{stats['total_operations']} successful")
     
-    table.add_row("", "", "")  # Separator
-    
-    # Performance metrics
+    table.add_row("", "", "")  
+
     table.add_row("Avg Operation Time", f"{stats['avg_operation_time']:.3f}s", "Average across all operations")
     table.add_row("Avg Search Time", f"{stats['avg_search_time']:.3f}s", f"Based on {stats['search_operations']} searches")
     table.add_row("Avg Index Time", f"{stats['avg_index_time']:.3f}s", f"Based on {stats['indexing_operations']} operations")
     
-    table.add_row("", "", "")  # Separator
+    table.add_row("", "", "") 
     
-    # Resource usage
     table.add_row("Total Memory Used", f"{stats['total_memory_used']:.2f} MB", "Total positive memory delta")
     table.add_row("Peak Memory Usage", f"{stats['peak_memory_usage']:.2f} MB", "Highest memory point")
     table.add_row("Avg CPU Usage", f"{stats['avg_cpu_usage']:.1f}%", "Average CPU utilization")
     
-    table.add_row("", "", "")  # Separator
-    
-    # Processing stats
+    table.add_row("", "", "")  
+
     table.add_row("Items Processed", str(stats['total_items_processed']), "Total files/results processed")
     table.add_row("Failed Operations", str(stats['failed_operations']), "Operations that failed")
     
     console.print(table)
     
-    # Performance summary panels
+
     if stats['total_operations'] > 0:
-        # Performance rating
         avg_time = stats['avg_operation_time']
         if avg_time < 0.5:
             perf_rating = "[green]🚀 Excellent[/green]"
@@ -81,7 +74,6 @@ def show():
             perf_rating = "[red]🐌 Slow[/red]"
             perf_desc = "Operations are running slowly"
         
-        # Memory usage rating
         total_memory = stats['total_memory_used']
         if total_memory < 50:
             mem_rating = "[green]💾 Low[/green]"
@@ -93,7 +85,6 @@ def show():
             mem_rating = "[red]🔥 High[/red]"
             mem_desc = "Memory usage is high"
         
-        # Create summary panels
         perf_panel = Panel(
             f"{perf_rating}\n[dim]{perf_desc}[/dim]",
             title="Performance Rating",
@@ -123,8 +114,7 @@ def history(operation, limit, failures_only):
         return
     
     console = Console()
-    
-    # Filter metrics
+
     filtered_metrics = metrics_collector.metrics
     
     if operation:
@@ -139,7 +129,6 @@ def history(operation, limit, failures_only):
         console.print("[yellow]No metrics found matching the criteria[/yellow]")
         return
     
-    # Create table
     title = f"📋 Recent Operations (last {len(recent_metrics)})"
     if operation:
         title += f" - filtered by '{operation}'"
@@ -158,8 +147,7 @@ def history(operation, limit, failures_only):
     for metric in recent_metrics:
         timestamp = datetime.fromtimestamp(metric.start_time).strftime("%H:%M:%S")
         status = "✅" if metric.success else "❌"
-        
-        # Memory delta with color coding
+
         mem_delta = metric.memory_delta_mb
         if mem_delta > 100:
             mem_display = f"[red]+{mem_delta:.1f}MB[/red]"
@@ -170,7 +158,6 @@ def history(operation, limit, failures_only):
         else:
             mem_display = f"{mem_delta:+.1f}MB"
         
-        # Duration with color coding
         duration = metric.duration
         if duration > 5:
             dur_display = f"[red]{duration:.3f}s[/red]"
@@ -179,7 +166,6 @@ def history(operation, limit, failures_only):
         else:
             dur_display = f"[green]{duration:.3f}s[/green]"
         
-        # Details
         details = ""
         if metric.error_message:
             details = f"Error: {metric.error_message[:30]}..."
@@ -198,7 +184,6 @@ def history(operation, limit, failures_only):
     
     console.print(table)
     
-    # Summary stats for filtered data
     if len(recent_metrics) > 1:
         avg_duration = sum(m.duration for m in recent_metrics) / len(recent_metrics)
         total_memory = sum(max(0, m.memory_delta_mb) for m in recent_metrics)
@@ -219,8 +204,7 @@ def clear():
         return
     
     console = Console()
-    
-    # Confirm before clearing
+
     if not click.confirm("Are you sure you want to clear all metrics history?"):
         console.print("[yellow]Cancelled[/yellow]")
         return
@@ -248,29 +232,27 @@ def analyze():
     analyzer = MetricsAnalyzer(metrics_collector.metrics)
     report = analyzer.generate_performance_report()
     
-    # Performance trends
     console.print(Panel.fit(
         f"""[bold green]Performance Analysis Report[/bold green]
 
-📊 **Overview:**
-   • Total Operations: {report['summary']['total_operations']}
-   • Time Range: {report['summary']['time_range']['duration_hours']:.1f} hours
-   • Success Rate: {report['summary']['success_rate']:.1f}%
+            📊 **Overview:**
+            • Total Operations: {report['summary']['total_operations']}
+            • Time Range: {report['summary']['time_range']['duration_hours']:.1f} hours
+            • Success Rate: {report['summary']['success_rate']:.1f}%
 
-⏱️  **Performance:**
-   • Average Duration: {report['summary']['performance_stats']['avg_duration']:.3f}s
-   • Median Duration: {report['summary']['performance_stats']['median_duration']:.3f}s
-   • Slowest Operation: {report['summary']['performance_stats']['max_duration']:.3f}s
+            ⏱️  **Performance:**
+            • Average Duration: {report['summary']['performance_stats']['avg_duration']:.3f}s
+            • Median Duration: {report['summary']['performance_stats']['median_duration']:.3f}s
+            • Slowest Operation: {report['summary']['performance_stats']['max_duration']:.3f}s
 
-💾 **Memory:**
-   • Average Memory Delta: {report['summary']['memory_stats']['avg_memory_delta']:.2f}MB
-   • Total Memory Used: {report['summary']['memory_stats']['total_memory_used']:.2f}MB
-   • Memory Leaks Detected: {report['summary']['memory_stats']['memory_leaks_detected']}
-        """,
-        title="Performance Summary"
-    ))
-    
-    # Operation breakdown
+            💾 **Memory:**
+            • Average Memory Delta: {report['summary']['memory_stats']['avg_memory_delta']:.2f}MB
+            • Total Memory Used: {report['summary']['memory_stats']['total_memory_used']:.2f}MB
+            • Memory Leaks Detected: {report['summary']['memory_stats']['memory_leaks_detected']}
+                    """,
+                    title="Performance Summary"
+            ))
+
     if report['operation_breakdown']:
         console.print("\n[bold]📋 Operation Breakdown:[/bold]")
         
@@ -300,7 +282,7 @@ def analyze():
         
         console.print(breakdown_table)
     
-    # Issues
+
     if report['issues']:
         console.print("\n[bold red]⚠️  Issues Detected:[/bold red]")
         for issue in report['issues']:
@@ -314,8 +296,7 @@ def analyze():
             console.print(f"  • {severity_display}: {issue['description']}")
     else:
         console.print("\n[green]✅ No performance issues detected[/green]")
-    
-    # Recommendations
+
     console.print("\n[bold]💡 Recommendations:[/bold]")
     for rec in report['recommendations']:
         console.print(f"  • {rec}")
@@ -337,18 +318,16 @@ def export(export_path):
     if not metrics_collector.metrics:
         console.print("[yellow]No metrics data to export[/yellow]")
         return
-    
-    # Prepare export data
+
     export_data = {
         "export_timestamp": datetime.now().isoformat(),
         "session_stats": metrics_collector.get_session_stats(),
         "metrics": [metric.to_dict() for metric in metrics_collector.metrics]
     }
     
-    # Ensure directory exists
+
     os.makedirs(os.path.dirname(export_path), exist_ok=True)
-    
-    # Export to file
+
     try:
         with open(export_path, 'w') as f:
             json.dump(export_data, f, indent=2)

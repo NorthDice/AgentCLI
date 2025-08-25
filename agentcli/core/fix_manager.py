@@ -501,7 +501,6 @@ class ContextBuilder:
         if 'config' in module_names or 'settings' in module_names:
             patterns.append('Configuration management')
         
-        # Анализируем циклические зависимости
         cycles = self.dependency_analyzer.find_circular_dependencies(dependency_graph)
         if cycles:
             patterns.append(f'Circular dependencies detected: {len(cycles)} cycles')
@@ -518,7 +517,7 @@ class ContextBuilder:
         for pattern in config_patterns:
             config_files.extend(self.root_path.glob(pattern))
             
-        return config_files[:20]  # Ограничиваем количество
+        return config_files[:20]  
     
     def _find_test_files(self) -> List[Path]:
         test_patterns = [
@@ -592,7 +591,6 @@ class FixManager:
                              target_paths: List[Path], description: str) -> str:
         context_parts = []
 
-        # General project information
         context_parts.append(f"""
 # PROJECT: {project_context.root_path.name}
 
@@ -602,7 +600,6 @@ class FixManager:
 ## MODULE STRUCTURE
 """)
 
-        # Module information
         for name, module in project_context.modules.items():
             context_parts.append(f"""
 ### Module: {name}
@@ -612,7 +609,6 @@ class FixManager:
 - External dependencies: {len(module.external_dependencies)}
 """)
 
-        # Detailed information about target files
         context_parts.append("\n## TARGET FILES (detailed)\n")
 
         for target_path in target_paths:
@@ -642,7 +638,7 @@ class FixManager:
 ```
 """)
 
-        # Dependency graph for target files
+
         context_parts.append("\n## DEPENDENCY GRAPH\n")
 
         for target_path in target_paths:

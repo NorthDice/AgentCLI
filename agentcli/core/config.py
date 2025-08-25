@@ -100,6 +100,4 @@ class Config:
                 "provider": "mock"
             }
 
-
-# Export a Config instance for global access
 config = Config()

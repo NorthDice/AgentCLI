@@ -10,7 +10,6 @@ from agentcli.core.file_ops import write_file, read_file
 from agentcli.core.logger import Logger
 from agentcli.utils.logging import logger
 
-# Import metrics collector with fallback
 try:
     from agentcli.core.performance.collector import metrics_collector
 except ImportError:
@@ -19,7 +18,6 @@ except ImportError:
 
 @contextmanager
 def performance_tracker(operation: str, **kwargs):
-    """Context manager for tracking performance metrics."""
     operation_context = None
     
     if metrics_collector:
@@ -38,11 +36,7 @@ def performance_tracker(operation: str, **kwargs):
 @click.option("--output", "-o", help="Path to output file")
 @click.option("--dry-run", "-d", is_flag=True, help="Preview the generated code without writing to file")
 def gen(description, output, dry_run):
-    """Generate code based on description.
-    
-    DESCRIPTION - description of code to generate.
-    """
-    
+
     with performance_tracker("cli_generate_code", 
                            description=description[:50] + "..." if len(description) > 50 else description,
                            output=output or "no_output",
@@ -55,7 +49,6 @@ def gen(description, output, dry_run):
             
             action_logger = Logger()
             
-            # Check if output file exists and modify the query accordingly
             current_content = ""
             if output and os.path.exists(output):
                 try:
@@ -90,8 +83,7 @@ def gen(description, output, dry_run):
                 return
             
             code = code_action.get('content', '')
-            
-            # Update metrics context
+
             if ctx:
                 ctx.kwargs.update({
                     'items_processed': len(actions),
@@ -100,12 +92,10 @@ def gen(description, output, dry_run):
                     'output_file': output or "none"
                 })
             
-            # Always show the generated code
             click.echo("\n--- Generated Code ---\n")
             click.echo(code)
             click.echo("\n-------------------------\n")
-            
-            # If dry run mode, show message and return
+
             if dry_run and output:
                 click.echo(f"\nDry run mode: Code would be written to {output}")
                 return
@@ -113,10 +103,8 @@ def gen(description, output, dry_run):
                 click.echo("\nDry run mode: No output file specified")
                 return
             
-            # Ask for confirmation
             if click.confirm("Does the generated code look good?", default=True):
                 if not output:
-                    # If no output specified, ask for file path
                     output = click.prompt("Enter output file path", type=str)
                 
                 try:
@@ -130,25 +118,22 @@ def gen(description, output, dry_run):
                         os.makedirs(directory, exist_ok=True)
                     
                     write_file(output, code)
-                    
-                    # Auto-index the new/modified file
+
                     try:
                         from agentcli.core.chroma_indexer import ChromaIndexer
                         indexer = ChromaIndexer(os.getcwd())
-                        # Just queue the file without starting the full indexer
+                        
                         indexer.queue_file_indexing(output)
                         
-                        # Start a temporary indexer to process just this file
                         indexer.start()
                         import time
-                        time.sleep(1)  # Give it a moment to process
+                        time.sleep(1)  
                         indexer.stop()
                         
                         click.echo("🔄 File indexed successfully!")
                     except Exception as e:
                         logger.warning(f"Failed to queue file for indexing: {e}")
                     
-                    # Log as modify if file existed, create if new
                     if current_content:
                         action_logger.log_action("modify", f"Modified file: {output}", {
                             "path": output,

@@ -17,7 +17,6 @@ def status(logs, plans):
     console = Console()
     
     if not logs and not plans:
-        # By default show both logs and plans
         logs = True
         plans = True
     
@@ -35,15 +34,13 @@ def _show_plans(console):
     if not os.path.exists(plans_dir):
         console.print("[yellow]Plans directory not found.[/]")
         return
-    
-    # Find all plan files
+
     plan_files = glob.glob(os.path.join(plans_dir, "*.json"))
     
     if not plan_files:
         console.print("[yellow]No plans found.[/]")
         return
     
-    # Build table of plans
     table = Table(title="Available Plans")
     table.add_column("ID", style="cyan")
     table.add_column("Query", style="green")
@@ -60,7 +57,6 @@ def _show_plans(console):
             timestamp = plan.get("timestamp", "Unknown")
             actions_count = len(plan.get("actions", []))
             
-            # Convert timestamp if possible
             try:
                 dt = datetime.fromisoformat(timestamp)
                 timestamp = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -92,14 +88,12 @@ def _show_logs(console):
         console.print("[yellow]Change log is empty.[/]")
         return
     
-    # Find all log files
     log_files = glob.glob(os.path.join(logs_dir, "*.json"))
     
     if not log_files:
         console.print("[yellow]Change log is empty.[/]")
         return
-    
-    # Build table of logs
+
     table = Table(title="Change History")
     table.add_column("ID", style="cyan")
     table.add_column("Action", style="green")
@@ -116,7 +110,6 @@ def _show_logs(console):
             description = log.get("description", "No description")
             timestamp = log.get("timestamp", "Unknown")
             
-            # Convert timestamp if possible
             try:
                 dt = datetime.fromisoformat(timestamp)
                 timestamp = dt.strftime("%Y-%m-%d %H:%M:%S")

@@ -12,6 +12,19 @@ from agentcli.core.exceptions import ExecutionError, ActionError, RollbackError,
 from agentcli.utils.logging import logger as app_logger
 
 
+def _auto_index_file(file_path: str):
+    """Automatically index a file after creation/modification."""
+    try:
+        from agentcli.core.chroma_indexer import ChromaIndexer
+        # Get project root directory
+        project_path = os.getcwd()
+        indexer = ChromaIndexer(project_path)
+        indexer.queue_file_indexing(file_path)
+        app_logger.debug(f"File queued for background indexing: {file_path}")
+    except Exception as e:
+        app_logger.warning(f"Failed to queue file for indexing: {e}")
+
+
 class Executor:
     """Class for executing action plans."""
     
@@ -196,6 +209,10 @@ class Executor:
                 
                 app_logger.debug(f"Creating file: {path}")
                 write_file(path, content)
+                
+                # Auto-index the newly created file
+                _auto_index_file(path)
+                
                 self.logger.log_action("create", f"File created: {path}", {
                     "path": path,
                     "content": content  # Сохраняем содержимое для возможности восстановления
@@ -231,6 +248,9 @@ class Executor:
                 
                 # Write new content
                 write_file(path, content)
+                
+                # Auto-index the modified file
+                _auto_index_file(path)
                 
                 self.logger.log_action("modify", f"File modified: {path}", {
                     "path": path,
@@ -424,6 +444,7 @@ class Executor:
                         elif content is not None:
                             # File doesn't exist but we have content - restore it
                             write_file(path, content)
+                            _auto_index_file(path)  # Auto-index restored file
                             result["actions_rolled_back"].append({
                                 "type": "restore",
                                 "path": path,
@@ -442,6 +463,7 @@ class Executor:
                     
                     if path and old_content is not None:
                         write_file(path, old_content)
+                        _auto_index_file(path)  # Auto-index restored file
                         result["actions_rolled_back"].append({
                             "type": "restore",
                             "path": path,
@@ -458,6 +480,7 @@ class Executor:
                     
                     if path and content is not None:
                         write_file(path, content)
+                        _auto_index_file(path)  # Auto-index restored file
                         result["actions_rolled_back"].append({
                             "type": "restore",
                             "path": path,

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
-from agentcli.core.azure_llm import create_llm_service
+from agentcli.core.azure_llm import get_llm_service
 from agentcli.core.exceptions import PlanError, ValidationError, LLMServiceError
 from agentcli.utils.logging import logger
 
@@ -28,7 +28,7 @@ class Planner:
     def llm_service(self):
         """Lazy initialization of LLM service."""
         if self._llm_service is None:
-            self._llm_service = create_llm_service()
+            self._llm_service = get_llm_service()
         return self._llm_service
     
     def create_plan(self, query: str) -> Dict[str, Any]:

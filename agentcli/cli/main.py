@@ -1,4 +1,3 @@
-
 import os
 import click
 from dotenv import load_dotenv
@@ -6,6 +5,7 @@ from dotenv import load_dotenv
 from agentcli import __version__
 from agentcli.utils.logging import setup_logging
 from agentcli.cli.commands.plan import plan
+from agentcli.cli.commands.fix import fix
 from agentcli.cli.commands.apply import apply
 from agentcli.cli.commands.rollback import rollback
 from agentcli.cli.commands.search import search
@@ -39,6 +39,7 @@ def cli(debug, log_file):
 
 
 cli.add_command(plan)
+cli.add_command(fix)
 cli.add_command(apply)
 cli.add_command(rollback)
 cli.add_command(search)

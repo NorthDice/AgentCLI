@@ -40,6 +40,7 @@ wheels/
 # AgentCLI specific
 .agentcli/logs/
 .agentcli/search_index/
+.agentcli/cache/
 plans/
 
 # Temporary files

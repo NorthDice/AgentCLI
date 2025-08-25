@@ -26,15 +26,15 @@ class SearchServiceFactory:
         config = config or {}
         
         # Create components
-        chunker = TreeSitterChunker()
+        from agentcli.core.chunkers.ast_function_chunker import ASTFunctionChunker
+        chunker = ASTFunctionChunker()
         embedder = SentenceTransformerEmbedder(
-            model_name=config.get("model_name", "all-MiniLM-L6-v2")
+            model_name=config.get("model_name", "all-mpnet-base-v2")
         )
         vector_store = ChromaVectorStore(
             index_dir=config.get("index_dir", ".agentcli/search_index"),
             collection_name=config.get("collection_name", "code_chunks")
         )
-        
         # Create service
         return SemanticSearchService(chunker, embedder, vector_store)
     

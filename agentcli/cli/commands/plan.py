@@ -62,22 +62,17 @@ def plan(query, output, format, structure):
         try:
             logger.info(f"Running 'plan' command with parameters: query='{query}', output='{output}', format='{format}', structure={structure}")
             
-            # Display process
             status_text = "Creating plan with project context..." if structure else "Creating plan..."
             with console.status(status_text):
-                # Create planner and generate plan
                 planner = Planner()
                 
-                # Add project structure context if requested
                 enhanced_query = query
                 if structure:
                     structure_provider = StructureProvider()
                     project_context = structure_provider.get_structure_summary()
                     
-                    # Get current file content if specific file is mentioned
                     file_context = ""
-                    if "файл" in query.lower() or "file" in query.lower():
-                        # Extract file path from query
+                    if "file" in query.lower():
                         import re
                         file_matches = re.findall(r'[\w/.-]+\.py', query)
                         if file_matches:
@@ -130,7 +125,6 @@ def plan(query, output, format, structure):
                     console.print(f"\n[bold red]✗[/] Error while calling LLM service: {str(e)}")
                     return 1
                 
-                # Update metrics context
                 if ctx:
                     ctx.kwargs.update({
                         'items_processed': len(result_plan.get("actions", [])),
@@ -138,22 +132,19 @@ def plan(query, output, format, structure):
                         'actions_count': len(result_plan.get("actions", []))
                     })
                 
-                # Save plan to file
                 try:
                     if output:
                         if not output.lower().endswith(f".{format}"):
                             output = f"{output}.{format}"
-                        # Save to specified path
                         output = planner.save_plan(result_plan, output)
                     else:
-                        # By default save into 'plans' directory
+
                         os.makedirs("plans", exist_ok=True)
                         output = planner.save_plan(result_plan)
                 except Exception as e:
                     logger.error(f"Error while saving plan: {str(e)}")
                     console.print(f"\n[bold red]✗[/] Error while saving plan: {str(e)}")
                     
-                    # Show traceback in debug mode
                     if os.environ.get("AGENTCLI_LOG_LEVEL") == "DEBUG":
                         console.print("\n[bold red]Traceback:[/]")
                         console.print(traceback.format_exc())

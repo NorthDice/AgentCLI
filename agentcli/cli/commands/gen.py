@@ -5,7 +5,7 @@ import click
 from pathlib import Path
 from contextlib import contextmanager
 
-from agentcli.core import create_llm_service, LLMServiceError
+from agentcli.core import get_llm_service, LLMServiceError
 from agentcli.core.file_ops import write_file, read_file
 from agentcli.core.logger import Logger
 from agentcli.utils.logging import logger
@@ -51,7 +51,7 @@ def gen(description, output, dry_run):
         click.echo(f"Generating code for: {description}")
         
         try:
-            llm_service = create_llm_service()
+            llm_service = get_llm_service()
             
             action_logger = Logger()
             
@@ -131,6 +131,23 @@ def gen(description, output, dry_run):
                     
                     write_file(output, code)
                     
+                    # Auto-index the new/modified file
+                    try:
+                        from agentcli.core.chroma_indexer import ChromaIndexer
+                        indexer = ChromaIndexer(os.getcwd())
+                        # Just queue the file without starting the full indexer
+                        indexer.queue_file_indexing(output)
+                        
+                        # Start a temporary indexer to process just this file
+                        indexer.start()
+                        import time
+                        time.sleep(1)  # Give it a moment to process
+                        indexer.stop()
+                        
+                        click.echo("🔄 File indexed successfully!")
+                    except Exception as e:
+                        logger.warning(f"Failed to queue file for indexing: {e}")
+                    
                     # Log as modify if file existed, create if new
                     if current_content:
                         action_logger.log_action("modify", f"Modified file: {output}", {
@@ -141,7 +158,7 @@ def gen(description, output, dry_run):
                     else:
                         action_logger.log_action("create", f"Created file: {output}", {
                             "path": output,
-                            "content": code  # Сохраняем содержимое для возможности восстановления
+                            "content": code 
                         })
                     
                     click.echo(f"✅ Code successfully generated and saved to file: {output}")

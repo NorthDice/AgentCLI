@@ -3,6 +3,7 @@
 import os
 import json
 import logging
+import threading
 from typing import List, Dict, Any, Optional
 
 from openai import AzureOpenAI
@@ -13,12 +14,27 @@ from agentcli.utils.logging import logger
 
 
 class AzureOpenAIService(LLMService):
-    """Service for working with Azure OpenAI API."""
-    
+    """Singleton service for working with Azure OpenAI API."""
+    _instance: Optional['AzureOpenAIService'] = None
+    _lock = threading.Lock()
+    _initialized = False
+
+    def __new__(cls) -> 'AzureOpenAIService':
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self):
-        """Initialize Azure OpenAI service."""
+        if not self._initialized:
+            with self._lock:
+                if not self._initialized:
+                    self._setup_service()
+                    self.__class__._initialized = True
+
+    def _setup_service(self):
         super().__init__()
-        
         self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
         self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15")
@@ -26,7 +42,6 @@ class AzureOpenAIService(LLMService):
         self.model_name = os.getenv("AZURE_OPENAI_MODEL_NAME", "gpt-4")
         self.temperature = float(os.getenv("LLM_TEMPERATURE", "0.7"))
         self.max_tokens = int(os.getenv("LLM_MAX_TOKENS", "10000"))
-        
         if not self.api_key or not self.endpoint or not self.deployment:
             missing = []
             if not self.api_key:
@@ -35,25 +50,19 @@ class AzureOpenAIService(LLMService):
                 missing.append("AZURE_OPENAI_ENDPOINT")
             if not self.deployment:
                 missing.append("AZURE_OPENAI_DEPLOYMENT")
-                
             error_msg = f"Missing required parameters for Azure OpenAI: {', '.join(missing)}"
             logger.error(error_msg)
             raise LLMServiceError(error_msg)
-        
         self.system_prompt = """
         You are an assistant for generating filesystem action plans based on natural language.
-        
         Your task is to convert user requests into a sequence of actions to be executed in the file system.
-        
         For each action, specify:
         1. Action type (create_file, modify, delete, info)
         2. File path (absolute or relative)
         3. File content (for create_file and modify)
         4. Action description
-        
         Return the result strictly in JSON format.
         """
-        
         try:
             self.client = AzureOpenAI(
                 api_version=self.api_version,
@@ -61,10 +70,12 @@ class AzureOpenAIService(LLMService):
                 api_key=self.api_key,
                 timeout=60.0,
             )
-            logger.debug("Azure OpenAI client successfully initialized")
+            logger.info("🤖 Azure OpenAI client successfully initialized (Singleton)")
         except Exception as e:
             logger.error(f"Error initializing Azure OpenAI client: {str(e)}")
             raise LLMServiceError(f"Failed to initialize Azure OpenAI client: {str(e)}")
+        self.session_context = {}
+        self.request_count = 0
     
     def _format_actions(self, actions_text: str) -> List[Dict[str, Any]]:
         """Format actions text into a data structure.
@@ -239,18 +250,15 @@ class AzureOpenAIService(LLMService):
             raise LLMServiceError(f"Failed to get response from Azure OpenAI API: {str(e)}")
 
 
-def create_llm_service() -> LLMService:
-    """Create LLM service instance.
-    
-    Returns:
-        LLMService: LLM service instance.
-        
-    Raises:
-        LLMServiceError: When there's an error creating LLM service.
-    """
+def _get_azure_openai_service() -> AzureOpenAIService:
+    """Get the singleton instance of Azure OpenAI service."""
+    return AzureOpenAIService()
+
+def get_llm_service() -> LLMService:
+    """Create LLM service instance (Singleton)."""
     try:
-        logger.info("Using Azure OpenAI LLM service")
-        return AzureOpenAIService()
+        logger.info("Creating Azure OpenAI LLM service (Singleton)")
+        return _get_azure_openai_service()
     except Exception as e:
         error_msg = f"Error creating Azure OpenAI LLM service: {str(e)}"
         logger.error(error_msg)

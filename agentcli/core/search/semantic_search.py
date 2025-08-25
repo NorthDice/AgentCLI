@@ -203,7 +203,9 @@ class SemanticSearchService(SearchService):
             for pattern in patterns:
                 pattern_files = glob.glob(os.path.join(directory, "**", pattern), recursive=True)
                 all_files.extend(pattern_files)
-            
+            logger.info(f"[DIAG] Найдено файлов для индексации: {len(all_files)}")
+            for f in all_files:
+                logger.info(f"[DIAG] Файл: {f}")
             stats["total_files"] = len(all_files)
             
             # Index each file
@@ -275,7 +277,7 @@ class SemanticSearchService(SearchService):
             
         # Ignore cache and other temporary files
         ignore_patterns = ["__pycache__", ".git", ".pytest_cache", ".mypy_cache", 
-                           ".tox", ".eggs", "*.pyc", "*.pyo", "*.pyd"]
+                           ".tox", ".eggs", ".agentcli", "*.pyc", "*.pyo", "*.pyd"]
                            
         for pattern in ignore_patterns:
             if pattern.startswith("*."):

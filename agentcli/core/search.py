@@ -98,7 +98,7 @@ def search_files(
     """
     if ignore_patterns is None:
         ignore_patterns = [
-            ".git", "__pycache__", "*.pyc", "*.pyo", "*.pyd", "*.so", "*.dll", 
+            ".git", "__pycache__", ".agentcli", "*.pyc", "*.pyo", "*.pyd", "*.so", "*.dll", 
             "*.exe", ".env", ".venv", "env", "venv"
         ]
     

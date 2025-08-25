@@ -1,7 +1,7 @@
 """Core components for AgentCLI."""
 
 from .llm_service import LLMService
-from .azure_llm import AzureOpenAIService, create_llm_service
+from .azure_llm import AzureOpenAIService, get_llm_service
 from .exceptions import LLMServiceError
 from .planner import Planner
 from .executor import Executor

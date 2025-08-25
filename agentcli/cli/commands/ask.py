@@ -8,7 +8,7 @@ from rich.text import Text
 from contextlib import contextmanager
 
 from agentcli.core.search import perform_semantic_search, SearchServiceFactory
-from agentcli.core.azure_llm import create_llm_service
+from agentcli.core.azure_llm import get_llm_service
 from agentcli.utils.logging import logger
 
 # Import metrics collector with fallback
@@ -39,7 +39,7 @@ class ProjectQAService:
     
     def __init__(self, console: Console):
         self.console = console
-        self.llm_service = create_llm_service()
+        self.llm_service = get_llm_service()
         self.search_service = SearchServiceFactory.get_default_semantic_search_service()
     
     def answer_question(self, question: str, top_k: int = 5) -> str:

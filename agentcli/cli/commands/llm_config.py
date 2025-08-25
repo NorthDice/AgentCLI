@@ -7,7 +7,7 @@ import json
 from typing import Optional
 
 from dotenv import load_dotenv
-from agentcli.core import create_llm_service, LLMServiceError
+from agentcli.core import get_llm_service, LLMServiceError
 
 
 @click.command()
@@ -32,7 +32,7 @@ def llm_config(test):
     if test:
         click.echo("\nTesting connection to Azure OpenAI...")
         try:
-            service = create_llm_service()
+            service = get_llm_service()
             
             test_query = "Respond with a simple 'OK' if you are working."
             click.echo(f"Query: {test_query}")

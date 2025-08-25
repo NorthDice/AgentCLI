@@ -18,8 +18,7 @@ class Logger:
         now = datetime.now()
         timestamp_part = now.strftime("%Y%m%d%H%M%S")
         microseconds = now.microsecond
-        
-        # Increment sequence counter for actions within the same microsecond
+
         self._sequence_counter += 1
         
         log_id = f"{timestamp_part}{microseconds:06d}_{self._sequence_counter:03d}"

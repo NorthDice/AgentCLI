@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class SentenceTransformerEmbedder(Embedder):
     """Embedder implementation using sentence-transformers."""
     
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(self, model_name: str = "all-mpnet-base-v2"):
         """Initialize the embedder with a model.
         
         Args:

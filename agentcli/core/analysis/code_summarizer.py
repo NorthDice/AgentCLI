@@ -1,7 +1,7 @@
 """Code summarizer using LLM for intelligent code explanation."""
 
 from typing import List, Optional
-from agentcli.core import create_llm_service, LLMServiceError
+from agentcli.core import get_llm_service, LLMServiceError
 from .models import ModuleInfo, AnalysisResult
 
 
@@ -9,7 +9,7 @@ class CodeSummarizer:
     """Generates intelligent summaries of code using LLM."""
     
     def __init__(self):
-        self.llm_service = create_llm_service()
+        self.llm_service = get_llm_service()
     
     def summarize_module(self, module_info: ModuleInfo) -> AnalysisResult:
         """Generate comprehensive summary of a module.

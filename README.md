@@ -10,6 +10,65 @@ AI-powered developer tool for code operations, analysis, and intelligent project
 - **🔄 Safe Operations**: File operations with comprehensive rollback support
 - **📝 Code Generation**: AI-powered code generation from descriptions
 - **🏗️ Context-Aware Planning**: Use `--structure` flag for better refactoring with full project awareness
+- **💻 Interactive Console**: Persistent shell with background indexing and intelligent caching
+
+## Interactive Console Mode
+
+AgentCLI now includes an interactive console mode that provides a persistent shell with background indexing and intelligent caching:
+
+```bash
+# Start interactive console
+python main.py console
+
+# Or with options
+python main.py console --project-path /path/to/project --debug
+```
+
+### Interactive Console Features
+
+- **🔄 Background Indexing**: Automatic project indexing starts when console launches
+- **💾 Intelligent Caching**: Project structure and search index are cached for fast access
+- **⚡ Real-time Updates**: Modified files are automatically re-indexed
+- **🎯 Context-Aware Commands**: All commands have access to full project context
+- **📊 Status Monitoring**: Real-time status of indexing and cache operations
+
+### Available Console Commands
+
+```bash
+# Show help
+help
+
+# Check system status
+status
+
+# Generate content with project context
+gen "Create a Python function to calculate fibonacci" -o fib.py
+
+# Create action plan with full project awareness
+plan "Add logging to all CLI commands"
+
+# Apply action plan
+apply <plan_id>
+
+# Search in project (uses cached index)
+search "class BackgroundIndexer"
+
+# Rebuild project index
+index
+
+# Show cache information
+cache
+
+# Exit console
+quit
+```
+
+### Console Workflow
+
+1. **Startup**: Console starts and immediately begins background indexing
+2. **Ready**: Once indexing completes, all commands have access to full project context
+3. **Auto-Caching**: Any file modifications trigger automatic re-indexing
+4. **Optimized LLM**: Context is intelligently cached to minimize token usage
 
 ### Virtual Environment Management
 

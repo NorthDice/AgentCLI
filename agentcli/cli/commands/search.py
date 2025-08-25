@@ -11,6 +11,7 @@ from agentcli.core.search import (
     perform_semantic_search, format_semantic_results,
     search_files, format_search_results
 )
+from agentcli.core.enhanced_search import enhanced_search, format_enhanced_results
 
 
 def show_search_metrics(console: Console, operation_context) -> None:
@@ -105,154 +106,22 @@ def search(query, path, file_pattern, max_results, context, regex, case_sensitiv
         else:
             path = os.path.abspath(path)
 
-        # For semantic search
-        if semantic:
-            with console.status(f"Performing semantic search for '{query}' in {path}..."):
-                search_results = perform_semantic_search(
-                    query=query, 
-                    path=path, 
-                    top_k=max_results,
-                    rebuild_index=rebuild_index
-                )
-                
-            # Update metrics context
-            if operation_context:
-                operation_context.kwargs['items_processed'] = len(search_results.get('results', []))
-                
-            format_semantic_results(search_results, console, context, max_results=semantic_results)
-            
-            # Show metrics if requested
-            if show_metrics and operation_context:
-                show_search_metrics(console, operation_context)
-            return
-
-        # For regular text search
-        search_type = "regular expression" if regex else "string"
-        case_info = "case-sensitive" if case_sensitive else "case-insensitive"
-        gitignore_info = "" if not ignore_gitignore else " (ignoring .gitignore)"
-
-        with console.status(f"Searching by {search_type} '{query}' {case_info} in {path}{gitignore_info}..."):
-            results = search_files(
+        # Use enhanced search that includes filename matching
+        with console.status(f"Searching for '{query}' in {path}..."):
+            results = enhanced_search(
                 query=query,
                 path=path,
-                file_pattern=file_pattern,
-                is_regex=regex,
-                use_gitignore=not ignore_gitignore,
-                case_sensitive=case_sensitive
+                semantic=semantic,
+                max_results=max_results
             )
 
         # Update metrics context
         if operation_context:
             operation_context.kwargs['items_processed'] = len(results)
 
-        # Show results
-        if not results:
-            console.print(f"[yellow]No results found for '[bold]{escape(query)}[/]'.[/]")
-            # Show metrics if requested
-            if show_metrics and operation_context:
-                show_search_metrics(console, operation_context)
-            return
-
-        total_matches = sum(len(result["matches"]) for result in results)
-        console.print(f"\n[bold green]Found:[/] {total_matches} matches in {len(results)} files")
-
-        # Use preformatted compact/links formats
-        if format in ["links", "compact"]:
-            formatted_results = format_search_results(results, format, os.getcwd())
-            console.print(formatted_results)
-            # Show metrics if requested
-            if show_metrics and operation_context:
-                show_search_metrics(console, operation_context)
-            return
-
-        # Rich formatted detailed output
-        result_count = 0
-        for file_result in results:
-            file_path = file_result["file"]
-            rel_path = os.path.relpath(file_path, os.getcwd())
-
-            console.print(f"\n[bold blue]{rel_path}[/]:")
-
-            try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    file_lines = f.readlines()
-            except Exception:
-                console.print("  [red]Error reading file[/]")
-                continue
-
-            last_line_shown = -1
-
-            for match in file_result["matches"]:
-                line_num = match["line_num"]
-                line = match["line"]
-                match_index = match["match_index"]
-                match_length = match.get("match_length", len(query))
-
-                start_line = max(1, line_num - context)
-                end_line = min(len(file_lines), line_num + context)
-
-                if start_line <= last_line_shown:
-                    start_line = last_line_shown + 1
-                if start_line > end_line:
-                    continue
-
-                if context > 0:
-                    code_lines = []
-
-                    # Context before
-                    for i in range(start_line, line_num):
-                        code_lines.append(file_lines[i - 1].rstrip("\n"))
-
-                # Matched line
-                code_lines.append(line)
-
-                # Context after
-                for i in range(line_num + 1, end_line + 1):
-                    code_lines.append(file_lines[i - 1].rstrip("\n"))
-
-                ext = os.path.splitext(file_path)[1] or ".txt"
-                language = ext.lstrip(".")
-
-                console.print(f"  [dim]Line {line_num}:[/]")
-                syntax = Syntax(
-                    "\n".join(code_lines),
-                    language,
-                    theme="monokai",
-                    line_numbers=True,
-                    start_line=start_line,
-                )
-                console.print(syntax)
-            else:
-                highlight_line = Text()
-                highlight_line.append(f"  {line_num}: ")
-
-                if match_index > 0:
-                    highlight_line.append(line[:match_index])
-
-                highlight_line.append(
-                    line[match_index:match_index + match_length],
-                    style="bold reverse"
-                )
-
-                if match_index + match_length < len(line):
-                    highlight_line.append(line[match_index + match_length:])
-
-                console.print(highlight_line)
-
-            last_line_shown = end_line
-            result_count += 1
-
-            if result_count >= max_results:
-                console.print(
-                    f"\n[yellow]Displayed {result_count} of {total_matches} matches. "
-                    "Refine your query for more accurate results.[/]"
-                )
-                # Show metrics if requested before early return
-                if show_metrics and operation_context:
-                    show_search_metrics(console, operation_context)
-                return
-
-        console.print(f"\n[green]Displayed {result_count} of {total_matches} matches.[/]")
+        # Show results with enhanced formatter
+        formatted_output = format_enhanced_results(results, query)
+        console.print(formatted_output)
         
         # Show metrics if requested
         if show_metrics and operation_context:
